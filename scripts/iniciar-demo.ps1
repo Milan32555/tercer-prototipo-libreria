@@ -1,5 +1,6 @@
 # Deja todo listo para la demostracion:
-#   1. Servidor GraphQL (Java) en el puerto 8081
+#   0. MongoDB en localhost:27017 (si no esta arriba, lo levanta como proceso del usuario)
+#   1. Servidor GraphQL (Java + Spring Data MongoDB) en el puerto 8081
 #   2. Cliente web (React) en http://localhost:5173 y lo abre en el navegador
 #   3. App Flutter en el celular conectado por USB (adb reverse + instalar + abrir)
 #
@@ -10,10 +11,10 @@
 $ErrorActionPreference = 'Continue'
 
 $raiz     = Split-Path -Parent $PSScriptRoot
-$servidor = Join-Path $raiz 'servidor\ServidorLibreria'
+$servidor = Join-Path $raiz 'servidor-libreria-mongo'
 $web      = Join-Path $raiz 'cliente-web-react'
 $movil    = Join-Path $raiz 'cliente-movil-flutter'
-$jar      = Join-Path $servidor 'target\ServidorLibreria-1.0.0.jar'
+$jar      = Join-Path $servidor 'target\ServidorLibreriaMongo-3.0.0.jar'
 $apk      = Join-Path $movil 'build\app\outputs\flutter-apk\app-release.apk'
 $paquete  = 'com.libreria.cliente_movil_libreria'
 $urlGraphQL = 'http://localhost:8081/graphql'
@@ -47,7 +48,43 @@ function Esperar($descripcion, $segundos, [scriptblock]$condicion) {
 }
 
 # --------------------------------------------------------------------------------------------
-Paso 'Servidor GraphQL (Java, puerto 8081)'
+Paso 'MongoDB (localhost:27017)'
+
+if (Escuchando 27017) {
+    Bien 'ya estaba corriendo'
+} else {
+    $servicio = Get-Service -Name 'MongoDB' -ErrorAction SilentlyContinue
+    if ($servicio) {
+        try { Start-Service 'MongoDB' -ErrorAction Stop } catch { Aviso 'el servicio MongoDB pide permisos de administrador; se usa un proceso del usuario' }
+    }
+    if (-not (Esperar 'MongoDB (servicio)' 5 { Escuchando 27017 })) {
+        $mongod = (Get-Command mongod -ErrorAction SilentlyContinue).Source
+        if (-not $mongod) {
+            $mongod = Get-ChildItem 'C:\Program Files\MongoDB\Server\*\bin\mongod.exe' -ErrorAction SilentlyContinue |
+                Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+        }
+        if (-not $mongod) {
+            Falla 'no se encontro mongod.exe: instalar con  winget install MongoDB.Server'
+            exit 1
+        }
+        # Carpeta de datos: LIBRERIA_DATOS_MONGO, la de D:\01-Desarrollo si existe, o %LOCALAPPDATA%.
+        $datos = $env:LIBRERIA_DATOS_MONGO
+        if (-not $datos) {
+            $junto = Join-Path (Split-Path -Parent $raiz) 'Bases-de-Datos\mongo-tercer-prototipo'
+            if (Test-Path $junto) { $datos = $junto } else { $datos = Join-Path $env:LOCALAPPDATA 'TercerPrototipo-Libreria\mongo' }
+        }
+        New-Item -ItemType Directory -Force (Join-Path $datos 'db'), (Join-Path $datos 'log') | Out-Null
+        Start-Process -FilePath $mongod -WindowStyle Hidden -ArgumentList @(
+            '--dbpath', "`"$(Join-Path $datos 'db')`"", '--logpath', "`"$(Join-Path $datos 'log\mongod.log')`"",
+            '--logappend', '--bind_ip', '127.0.0.1', '--port', '27017')
+        if (Esperar 'MongoDB' 30 { Escuchando 27017 }) { Bien "listo (datos en $datos)" } else { exit 1 }
+    } else {
+        Bien 'servicio MongoDB iniciado'
+    }
+}
+
+# --------------------------------------------------------------------------------------------
+Paso 'Servidor GraphQL (Java + MongoDB, puerto 8081)'
 
 $java = 'java'
 if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME 'bin\java.exe'))) {
@@ -67,8 +104,9 @@ if (ServidorResponde) {
         & .\mvnw.cmd -q -DskipTests package
         Pop-Location
     }
+    # chcp 65001 + UTF-8 en Java: los logs con tildes se ven bien en la consola.
     Start-Process cmd -WorkingDirectory $servidor `
-        -ArgumentList "/k title Servidor GraphQL - puerto 8081 && `"$java`" -jar `"$jar`""
+        -ArgumentList "/k chcp 65001 >nul && title Servidor GraphQL - puerto 8081 && `"$java`" -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -jar `"$jar`""
     if (Esperar 'El servidor' 90 { ServidorResponde }) { Bien "listo en $urlGraphQL" }
 }
 
@@ -101,10 +139,13 @@ if (-not $adb) {
 
 if (-not $adb) {
     Falla 'no se encontro adb (Android platform-tools)'
-} elseif (-not (Test-Path $apk)) {
-    Falla "no existe el APK: $apk"
-    Aviso 'compilarlo con: flutter build apk --release --dart-define=URL_GRAPHQL=http://localhost:8081/graphql'
 } else {
+    if (-not (Test-Path $apk)) {
+        Aviso 'no existe el APK, compilandolo (unos minutos)...'
+        Push-Location $movil
+        & flutter build apk --release --dart-define=URL_GRAPHQL=http://localhost:8081/graphql
+        Pop-Location
+    }
     & $adb start-server 2>$null | Out-Null
 
     $estadoAnterior = ''
@@ -150,5 +191,6 @@ Write-Host ' Todo listo para la demostracion' -ForegroundColor Cyan
 Write-Host "   Servidor:  $urlGraphQL   (consola: http://localhost:8081/graphiql)"
 Write-Host "   Web:       $urlWeb"
 Write-Host '   Celular:   app "Libreria" (si se desconecta el cable, ejecutar de nuevo)'
+Write-Host '   MongoDB:   localhost:27017, base "libreria" (colecciones libros y ejemplares)'
 Write-Host ' Para apagar: cerrar las ventanas "Servidor GraphQL" y "Cliente web React".'
 Write-Host '======================================================================' -ForegroundColor Cyan

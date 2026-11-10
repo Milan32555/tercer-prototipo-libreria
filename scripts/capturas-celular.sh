@@ -3,7 +3,7 @@
 # La prueba escribe "CAPTURA:<nombre>" en el registro de Flutter; este script lo lee con
 # adb logcat y guarda la pantalla real del teléfono con adb screencap.
 #   bash scripts/capturas-celular.sh [carpeta]     (Ctrl+C para terminar)
-carpeta="${1:-../Capturas-SegundoProyecto-Libreria/movil}"
+carpeta="${1:-../Capturas-TercerPrototipo-Libreria/movil}"
 mkdir -p "$carpeta"
 adb logcat -c
 adb logcat -v raw -s flutter:I | while IFS= read -r linea; do

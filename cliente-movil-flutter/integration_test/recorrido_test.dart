@@ -1,7 +1,8 @@
 // Recorrido de TODOS los casos de uso en el celular real, contra el servidor real
 // (con `adb reverse tcp:8081 tcp:8081` el celular ve el servidor del computador en localhost).
-// Toma una captura de cada pantalla. Conviene correrlo con el servidor recién iniciado
-// (datos de prueba limpios): elimina "Delirio" y presta EJ-001.
+// Toma una captura de cada pantalla. Conviene correrlo con datos de prueba limpios (servidor
+// con --libreria.mongo.base=libreria_e2e --libreria.datos-iniciales.reiniciar=true): elimina
+// "Delirio" y presta EJ-001.
 //
 //   flutter drive --driver=test_driver/integration_test.dart \
 //     --target=integration_test/recorrido_test.dart -d <id-del-celular> \
@@ -21,8 +22,10 @@ const _sinCapturas = bool.fromEnvironment('SIN_CAPTURAS');
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   final sufijo = _sufijoDefinido.isNotEmpty ? _sufijoDefinido : '${DateTime.now().millisecondsSinceEpoch % 10000000}';
-  final isbnNuevo = '978-MOV-$sufijo';
-  final codigoNuevo = 'EJ-MOV-$sufijo';
+  // ISBN-13 y código EJ-000 válidos y únicos en cada recorrido.
+  final numero = int.parse(sufijo) % 100000;
+  final isbnNuevo = '979-7${numero.toString().padLeft(9, '0')}';
+  final codigoNuevo = 'EJ-9${numero.toString().padLeft(5, '0')}';
 
   testWidgets('recorrido de todos los casos de uso en el celular', (tester) async {
     /// Pide una captura de la pantalla real del celular: imprime una marca que el computador lee
@@ -150,6 +153,14 @@ void main() {
     await esperar(find.text('Sin resultados'));
     await captura('22-libro-consultar-no-encontrado');
 
+    // ── Libro: detalle (maestro + detalle) ─────────────────────────────────────
+    await irA('Detalle');
+    await buscar('ISBN del libro', '978-0307474728');
+    await esperar(find.text('Maestro: libro'));
+    await captura('23-libro-detalle');
+    await mostrar(find.textContaining('Detalle: '));
+    await captura('24-libro-detalle-ejemplares');
+
     // ── Libro: actualizar ─────────────────────────────────────────────────────
     await irA('Actualizar');
     await buscar('ISBN del libro', isbnNuevo);
@@ -190,10 +201,11 @@ void main() {
     await tester.drag(find.text('Ficción').last, const Offset(-260, 0)); // desliza la tabla
     await tester.pumpAndSettle();
     await captura('51-libro-listar-desplazada');
-    await escribirEn(find.descendant(of: find.byType(SearchBar), matching: find.byType(TextField)), 'garcia');
+    await escribir('Precio mínimo', '40000');
+    await escribir('Precio máximo', '60000');
     await tocar(find.byTooltip('Filtrar'));
-    await esperar(find.text('1 libro'));
-    await captura('52-libro-listar-autor');
+    await esperar(find.text('Pedro Páramo'));
+    await captura('52-libro-listar-precio');
     await tocar(find.byTooltip('Limpiar filtros'));
     await tocar(find.widgetWithText(ChoiceChip, 'Poesía'));
     await esperar(find.text('Veinte poemas de amor y una canción desesperada'));
@@ -203,6 +215,7 @@ void main() {
     await irA('Adicionar', grupo: 1);
     await escribir('Código del ejemplar', codigoNuevo);
     await escribir('ISBN del libro', '978-8420633121');
+    await esperar(find.text('Ficciones · Jorge Luis Borges')); // el libro elegido por su ISBN
     await escribir('Ubicación', 'Estante D2');
     await elegirFechaYHora();
     await escribir('Precio de reposición', '52000');
@@ -223,6 +236,12 @@ void main() {
     await buscar('Código del ejemplar', 'EJ-999');
     await esperar(find.text('Sin resultados'));
     await captura('71-ejemplar-consultar-no-encontrado');
+    await tocar(find.text('Por libro y ubicación'));
+    await escribir('ISBN del libro', '978-0307474728');
+    await escribir('Ubicación', 'estante a1');
+    await tocar(find.widgetWithText(FilledButton, 'Buscar'));
+    await esperar(find.text('3 ejemplares de ese libro en esa ubicación'));
+    await captura('72-ejemplar-consultar-libro-ubicacion');
 
     // ── Ejemplar: actualizar (prestar EJ-001: el servidor suma un préstamo) ───
     await irA('Actualizar', grupo: 1);

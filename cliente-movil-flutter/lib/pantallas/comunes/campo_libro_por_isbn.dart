@@ -27,16 +27,28 @@ class _CampoLibroPorIsbnState extends State<CampoLibroPorIsbn> {
   bool _buscando = false;
   bool _noExiste = false;
   int _consulta = 0;
+  String _ultimo = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Se escucha el controlador (y no solo lo que se teclea) para reaccionar también cuando el
+    // texto se pone desde el código o se limpia el formulario.
+    widget.controller.addListener(_alCambiar);
+  }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_alCambiar);
     _espera?.cancel();
     super.dispose();
   }
 
-  void _alCambiar(String valor) {
+  void _alCambiar() {
+    final isbn = widget.controller.text.trim();
+    if (isbn == _ultimo) return;
+    _ultimo = isbn;
     _espera?.cancel();
-    final isbn = valor.trim();
     setState(() {
       _libro = null;
       _noExiste = false;
@@ -71,7 +83,6 @@ class _CampoLibroPorIsbnState extends State<CampoLibroPorIsbn> {
           enableSuggestions: false,
           textInputAction: TextInputAction.next,
           validator: validarIsbn,
-          onChanged: _alCambiar,
         ),
         const SizedBox(height: 4),
         if (_buscando) const Text('Buscando el libro…', style: TextStyle(fontSize: 12, color: kGris500)),
