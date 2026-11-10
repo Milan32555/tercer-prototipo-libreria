@@ -1,7 +1,7 @@
 # Cliente web — Librería (TypeScript · React)
 
-Cliente 1 del [Segundo Proyecto](../README.md). Aplicación web que consume el servidor
-GraphQL para gestionar Libros y Ejemplares.
+Cliente 1 del [Tercer Prototipo](../README.md). Aplicación web que consume el servidor
+GraphQL (con MongoDB) para gestionar Libros y Ejemplares. Versión 3.0.0.
 
 ## Ejecutar
 
@@ -28,7 +28,7 @@ VITE_URL_GRAPHQL=http://<ip-del-servidor>:8081/graphql
 
 ```
 src/
-├── types.ts                 Modelo: interfaces Libro / Ejemplar y enums
+├── types.ts                 Modelo: Libro, Ejemplar, EjemplarConLibro, Pagina, DetalleLibro, inputs y enums
 ├── graphql/                 Acceso a datos
 │   ├── clienteGraphQL.ts    Singleton que envía las peticiones (con X-Cliente: web) y traduce los errores
 │   ├── servicioLibro.ts     Consultas/mutaciones de Libro
@@ -42,7 +42,7 @@ src/
 │                            Banner, Insignias, Avisos (toasts), ConfirmarEliminacion, Ayuda (tooltip)…
 ├── estilos/                 tokens.css (colores, tipografía, espaciado, radios) y app.css
 ├── paginas/                 Vistas: una pantalla por caso de uso
-│   ├── libro/               Agregar, Eliminar, Actualizar, Listar, Consultar
+│   ├── libro/               Agregar, Eliminar, Actualizar, Listar, Consultar, Detalle (maestro + detalle)
 │   ├── ejemplar/            Agregar, Eliminar, Actualizar, Listar, Consultar
 │   ├── MenuPrincipal.tsx
 │   └── AcercaDe.tsx         Integrantes y versión
@@ -50,7 +50,24 @@ src/
 └── formato.ts               Formato de precios y fechas
 ```
 
-Pruebas: `src/**/*.test.ts(x)` (Vitest) y `e2e/` (Playwright contra el servidor real).
+Pruebas: `src/**/*.test.ts(x)` (Vitest) y `e2e/` (Playwright contra el servidor real con MongoDB;
+`npm run e2e` levanta el servidor sobre la base `libreria_e2e`, que se reinicia en cada corrida).
+
+## Lo nuevo en la versión 3.0.0 (MongoDB)
+
+- **Listar Libros**: paginado; sin filtro usa `libros`, con filtro por género y rango de precio
+  usa la consulta personalizada `librosPorPrecioYGenero` (el filtro lo hace MongoDB).
+- **Listar Ejemplares**: grilla con TODOS los atributos del ejemplar más el título y el autor del
+  libro (consulta personalizada `ejemplaresConLibro`, un `$lookup`), con filtros y paginación.
+- **Detalle del libro** (`/libros/detalle`): el libro (maestro) con sus ejemplares (detalle) y
+  los conteos por estado (`detalleLibro`).
+- **Consultar Ejemplar** con dos criterios: código, o ISBN del libro + ubicación.
+- Campos opcionales: editorial y sinopsis (Libro), observaciones (Ejemplar). Las fichas muestran
+  TODA la información, incluidos el `_id`, la llave foránea `libroId` y la versión.
+- Al adicionar un ejemplar, el libro se elige por su ISBN y se muestra su título y autor.
+- Actualizar envía la versión leída: si otro usuario cambió el documento, se muestra tal cual el
+  mensaje del servidor ("Otro usuario modificó este libro; vuelva a buscarlo")
+  junto a los botones del formulario.
 
 Cada pantalla implementa un solo caso de uso y se abre desde el menú lateral
 (**Libros**, **Ejemplares**, **Ayuda → Acerca de...**); en celular el menú se abre como un cajón.

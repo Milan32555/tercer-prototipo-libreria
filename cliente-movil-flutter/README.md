@@ -1,7 +1,7 @@
 # Cliente móvil — Librería (Dart · Flutter)
 
-Cliente 2 del [Segundo Proyecto](../README.md). App Flutter (Android, web y Windows) que
-consume el servidor GraphQL para gestionar Libros y Ejemplares.
+Cliente 2 del [Tercer Prototipo](../README.md). App Flutter (Android, web y Windows) que
+consume el servidor GraphQL (con MongoDB) para gestionar Libros y Ejemplares. Versión 3.0.0.
 
 ## Ejecutar
 
@@ -35,7 +35,7 @@ porque el servidor del proyecto usa `http://` (Android 9+ bloquea HTTP sin TLS p
 ```
 lib/
 ├── main.dart                    Rutas: una pantalla por caso de uso
-├── modelos/                     Modelo: Libro, Ejemplar, ResumenInventario (desde JSON)
+├── modelos/                     Modelo: Libro, Ejemplar, Pagina, ResumenInventario y DetalleLibro (desde JSON)
 ├── servicios/                   Acceso a datos
 │   ├── cliente_graphql.dart     Singleton que envía las peticiones (con X-Cliente: movil) y traduce los errores
 │   ├── servicio_libro.dart
@@ -47,7 +47,7 @@ lib/
 │   ├── menu_principal.dart      Inicio: buscador, resumen del inventario y accesos a cada caso de uso
 │   ├── menu_lateral.dart        NavigationDrawer con todas las opciones y "Ayuda → Acerca de..."
 │   ├── acerca_de.dart           Integrantes y versión
-│   ├── libro/                   agregar, eliminar, actualizar, listar, consultar
+│   ├── libro/                   agregar, eliminar, actualizar, listar, consultar, detalle (maestro + detalle)
 │   ├── ejemplar/                agregar, eliminar, actualizar, listar, consultar
 │   └── comunes/                 Fichas, tabla con columna fija, campo de fecha y hora, hoja de confirmación y componentes
 ├── tema/                       tokens.dart (mismos valores que la web) y tema.dart (Material 3)
@@ -63,8 +63,12 @@ ideas de apps de librerías y lectura (Libby, Goodreads, Kindle, Buscalibre) y d
   interfaz y Literata para los títulos de libros (incluidas en `assets/fuentes`, licencia SIL OFL).
 - Inicio con buscador (`SearchBar`), cifras del inventario calculadas por el servidor y
   distribución de los ejemplares por estado; menú en un `NavigationDrawer`.
-- Listar en una tabla con encabezado fijo y la primera columna (título / código) fija al
-  desplazar en horizontal; filtros con chips y búsqueda; botón flotante para adicionar.
+- Listar en una tabla paginada con encabezado fijo y la primera columna (título / código) fija al
+  desplazar en horizontal; filtros con chips (género / estado), rango de precio o ISBN; botón
+  flotante para adicionar. Listar Ejemplares muestra todos los atributos más título y autor del libro.
+- Detalle del libro (maestro + detalle), Consultar Ejemplar por código o por ISBN + ubicación y
+  campos opcionales (editorial, sinopsis, observaciones). Actualizar envía la versión leída
+  (concurrencia optimista) y muestra tal cual el conflicto que responde el servidor.
 - Formularios por secciones con el teclado adecuado a cada campo y validación en línea;
   eliminar se confirma en una hoja inferior y los resultados se avisan con un `SnackBar`.
 - Estados de un ejemplar como insignias con punto + texto. Íconos Lucide (la misma familia que
