@@ -1,18 +1,19 @@
 import { FormEvent, useState } from "react";
 import { FilterX, Library, Plus, Search } from "lucide-react";
-import { listarEjemplaresFiltrados } from "../../graphql/servicioEjemplar";
+import { listarEjemplaresConLibro } from "../../graphql/servicioEjemplar";
 import { mensajeDeError } from "../../graphql/clienteGraphQL";
 import { ejemplarObservable } from "../../observer/Observable";
 import { useListadoObservado } from "../../observer/useListadoObservado";
-import { formatearFechaCorta, formatearPrecio } from "../../formato";
+import { formatearFecha, formatearPrecio } from "../../formato";
 import { Banner } from "../../componentes/ui/Banner";
 import { Boton, BotonEnlace } from "../../componentes/ui/Boton";
 import { Campo } from "../../componentes/ui/Campo";
 import { Encabezado } from "../../componentes/ui/Encabezado";
 import { InsigniaEstado } from "../../componentes/ui/Insignias";
+import { Paginador } from "../../componentes/ui/Paginador";
 import { Segmentado } from "../../componentes/ui/Segmentado";
 import { Columna, TablaDatos } from "../../componentes/ui/TablaDatos";
-import { ESTADOS_EJEMPLAR, EstadoEjemplar, Ejemplar, etiquetaEstado } from "../../types";
+import { ESTADOS_EJEMPLAR, EstadoEjemplar, EjemplarConLibro, etiquetaEstado } from "../../types";
 
 type FiltroEstado = EstadoEjemplar | "TODOS";
 
@@ -21,43 +22,58 @@ const OPCIONES_FILTRO_ESTADO = [
   ...ESTADOS_EJEMPLAR.map((e) => ({ valor: e as FiltroEstado, texto: etiquetaEstado(e) }))
 ];
 
-const COLUMNAS: Columna<Ejemplar>[] = [
-  {
-    titulo: "Código",
-    celda: (e) => (
-      <span className="celda-titulo">
-        <strong>{e.codigo}</strong>
-        <small>{e.ubicacion}</small>
-      </span>
-    )
-  },
+/** TODOS los atributos del ejemplar + título y autor de su libro (colección A). */
+const COLUMNAS: Columna<EjemplarConLibro>[] = [
+  { titulo: "Código", celda: (e) => <strong>{e.codigo}</strong> },
+  { titulo: "Título del libro", celda: (e) => <span className="titulo-libro">{e.tituloLibro ?? "—"}</span> },
+  { titulo: "Autor del libro", celda: (e) => e.autorLibro ?? "—" },
+  { titulo: "ISBN del libro", celda: (e) => e.isbnLibro ?? "—", apagada: true },
   { titulo: "Estado", celda: (e) => <InsigniaEstado estado={e.estado} /> },
-  { titulo: "Libro (ISBN)", celda: (e) => e.isbnLibro, apagada: true },
-  { titulo: "Ingreso", celda: (e) => formatearFechaCorta(e.fechaIngreso), apagada: true },
+  { titulo: "Ubicación", celda: (e) => e.ubicacion },
+  { titulo: "Fecha de ingreso", celda: (e) => formatearFecha(e.fechaIngreso), apagada: true },
   { titulo: "Préstamos", celda: (e) => e.numeroPrestamos, numerica: true },
-  { titulo: "Reposición", celda: (e) => formatearPrecio(e.precioReposicion), numerica: true }
+  { titulo: "Reposición", celda: (e) => formatearPrecio(e.precioReposicion), numerica: true },
+  {
+    titulo: "Observaciones",
+    celda: (e) => (e.observaciones ? <span className="celda-texto-largo" title={e.observaciones}>{e.observaciones}</span> : "—"),
+    apagada: true
+  },
+  { titulo: "Versión", celda: (e) => e.version ?? "—", numerica: true },
+  { titulo: "ID (_id)", celda: (e) => <code className="codigo-id">{e.id}</code> },
+  { titulo: "ID del libro (libroId)", celda: (e) => <code className="codigo-id">{e.libroId}</code> }
 ];
 
 /**
- * Caso de uso: Listar Ejemplares en una grilla con filtro por estado y/o ISBN del libro. El
- * filtro y el total los resuelve el servidor. Observer igual que en Listar Libros.
+ * Caso de uso: Listar Ejemplares. Usa la consulta personalizada ejemplaresConLibro ($lookup en
+ * MongoDB): cada fila trae TODOS los atributos del ejemplar más el título y el autor de su
+ * libro. Filtros por estado y/o ISBN del libro, y paginación, en el servidor. Observer igual
+ * que en Listar Libros.
  */
 export default function ListarEjemplares() {
-  const [ejemplares, setEjemplares] = useState<Ejemplar[]>([]);
+  const [ejemplares, setEjemplares] = useState<EjemplarConLibro[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [pagina, setPagina] = useState(0);
+  const [tamanio, setTamanio] = useState(10);
   const [estado, setEstado] = useState<FiltroEstado>("TODOS");
-  const [isbnLibro, setIsbnLibro] = useState("");
+  const [isbn, setIsbn] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [cargado, setCargado] = useState(false);
 
-  async function cargar(filtroEstado: FiltroEstado = estado, filtroIsbn: string = isbnLibro) {
+  async function cargar(e: FiltroEstado = estado, i: string = isbn, p: number = pagina, t: number = tamanio) {
     setCargando(true);
     setError(null);
     try {
-      const listado = await listarEjemplaresFiltrados(filtroEstado === "TODOS" ? "" : filtroEstado, filtroIsbn);
-      setEjemplares(listado.ejemplares);
-      setTotal(listado.total);
+      const resultado = await listarEjemplaresConLibro(e === "TODOS" ? "" : e, i, p, t);
+      if (resultado.contenido.length === 0 && p > 0 && resultado.totalPaginas > 0) {
+        setPagina(resultado.totalPaginas - 1);
+        await cargar(e, i, resultado.totalPaginas - 1, t);
+        return;
+      }
+      setEjemplares(resultado.contenido);
+      setTotal(resultado.totalElementos);
+      setTotalPaginas(resultado.totalPaginas);
     } catch (err) {
       setError(mensajeDeError(err));
     } finally {
@@ -70,28 +86,42 @@ export default function ListarEjemplares() {
 
   function filtrar(e: FormEvent) {
     e.preventDefault();
-    void cargar();
+    setPagina(0);
+    void cargar(estado, isbn, 0);
   }
 
   function cambiarEstado(nuevo: FiltroEstado) {
     setEstado(nuevo);
-    void cargar(nuevo);
+    setPagina(0);
+    void cargar(nuevo, isbn, 0);
   }
 
   function limpiar() {
     setEstado("TODOS");
-    setIsbnLibro("");
-    void cargar("TODOS", "");
+    setIsbn("");
+    setPagina(0);
+    void cargar("TODOS", "", 0);
   }
 
-  const hayFiltros = estado !== "TODOS" || isbnLibro.trim() !== "";
+  function irAPagina(nueva: number) {
+    setPagina(nueva);
+    void cargar(estado, isbn, nueva);
+  }
+
+  function cambiarTamanio(nuevo: number) {
+    setTamanio(nuevo);
+    setPagina(0);
+    void cargar(estado, isbn, 0, nuevo);
+  }
+
+  const hayFiltros = estado !== "TODOS" || isbn.trim() !== "";
 
   return (
     <>
       <Encabezado
         seccion="Ejemplares"
         titulo="Listar ejemplares"
-        descripcion="Todas las copias físicas del inventario. El filtro lo aplica el servidor."
+        descripcion="Todas las copias físicas con todos sus datos y el título y autor de su libro."
         acciones={<BotonEnlace to="/ejemplares/agregar" variante="primario" icono={Plus}>Adicionar ejemplar</BotonEnlace>}
       />
 
@@ -103,8 +133,8 @@ export default function ListarEjemplares() {
           <Campo
             className="campo-busqueda"
             etiqueta="ISBN del libro"
-            value={isbnLibro}
-            onChange={(e) => setIsbnLibro(e.target.value)}
+            value={isbn}
+            onChange={(e) => setIsbn(e.target.value)}
             placeholder="Opcional"
             autoComplete="off"
           />
@@ -114,7 +144,7 @@ export default function ListarEjemplares() {
 
         <div className="barra-tabla" aria-live="polite">
           <span className="conteo">{total === 1 ? "1 ejemplar" : `${total} ejemplares`}</span>
-          <span>Total calculado por el servidor</span>
+          <span>Consulta: ejemplares con su libro ($lookup) · total calculado por el servidor</span>
         </div>
 
         <TablaDatos
@@ -126,6 +156,7 @@ export default function ListarEjemplares() {
           ocupada={cargando}
           error={error}
           alReintentar={() => void cargar()}
+          ancha
           vacio={hayFiltros
             ? {
                 icono: FilterX,
@@ -140,6 +171,9 @@ export default function ListarEjemplares() {
                 accion: <BotonEnlace to="/ejemplares/agregar" icono={Plus}>Adicionar ejemplar</BotonEnlace>
               }}
         />
+
+        <Paginador pagina={pagina} totalPaginas={totalPaginas} tamanio={tamanio} ocupado={cargando}
+                   alCambiarPagina={irAPagina} alCambiarTamanio={cambiarTamanio} />
       </section>
     </>
   );

@@ -1,12 +1,13 @@
 import { FormEvent, useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
-import { actualizarLibro, buscarLibroPorIsbn } from "../../graphql/servicioLibro";
+import { actualizarLibro, buscarLibroPorIsbn, textoONulo } from "../../graphql/servicioLibro";
 import { mensajeDeError } from "../../graphql/clienteGraphQL";
 import { libroObservable } from "../../observer/Observable";
 import { aValorDeInputFecha } from "../../formato";
 import FichaLibro from "../../componentes/FichaLibro";
 import { OPCIONES_GENERO } from "../../componentes/opciones";
 import { useAvisos } from "../../componentes/ui/Avisos";
+import { AreaTexto } from "../../componentes/ui/AreaTexto";
 import { Banner } from "../../componentes/ui/Banner";
 import { Boton } from "../../componentes/ui/Boton";
 import { BuscadorClave } from "../../componentes/ui/BuscadorClave";
@@ -16,10 +17,11 @@ import { Selector } from "../../componentes/ui/Selector";
 import { SinResultados } from "../../componentes/ui/SinResultados";
 import { Genero, Libro } from "../../types";
 import {
-  Errores, hayErrores, validar, validarDecimalPositivo, validarEnteroPositivo, validarFecha, validarObligatorio
+  Errores, hayErrores, validar, validarDecimalPositivo, validarEnteroPositivo, validarFechaNoFutura, validarLargoMaximo,
+  validarObligatorio
 } from "../../validaciones";
 
-type CampoEditable = "titulo" | "autor" | "precio" | "numeroPaginas" | "fechaPublicacion";
+type CampoEditable = "titulo" | "autor" | "precio" | "numeroPaginas" | "fechaPublicacion" | "editorial" | "sinopsis";
 
 /**
  * Caso de uso: Actualizar Libro. Primero se busca y se muestra TODA su información actual;
@@ -29,7 +31,7 @@ export default function ActualizarLibro() {
   const [libro, setLibro] = useState<Libro | null>(null);
   const [guardado, setGuardado] = useState<Libro | null>(null);
   const [datos, setDatos] = useState<Record<CampoEditable, string>>({
-    titulo: "", autor: "", precio: "", numeroPaginas: "", fechaPublicacion: ""
+    titulo: "", autor: "", precio: "", numeroPaginas: "", fechaPublicacion: "", editorial: "", sinopsis: ""
   });
   const [genero, setGenero] = useState<Genero>("FICCION");
   const [errores, setErrores] = useState<Errores<CampoEditable>>({});
@@ -53,7 +55,9 @@ export default function ActualizarLibro() {
         autor: resultado.autor,
         precio: String(resultado.precio),
         numeroPaginas: String(resultado.numeroPaginas),
-        fechaPublicacion: aValorDeInputFecha(resultado.fechaPublicacion)
+        fechaPublicacion: aValorDeInputFecha(resultado.fechaPublicacion),
+        editorial: resultado.editorial ?? "",
+        sinopsis: resultado.sinopsis ?? ""
       });
       setGenero(resultado.genero);
     } catch (err) {
@@ -76,7 +80,9 @@ export default function ActualizarLibro() {
       autor: validarObligatorio(datos.autor),
       precio: validarDecimalPositivo(datos.precio),
       numeroPaginas: validarEnteroPositivo(datos.numeroPaginas),
-      fechaPublicacion: validarFecha(datos.fechaPublicacion)
+      fechaPublicacion: validarFechaNoFutura(datos.fechaPublicacion),
+      editorial: validarLargoMaximo(datos.editorial, 120),
+      sinopsis: validarLargoMaximo(datos.sinopsis, 500)
     });
     setErrores(encontrados);
     if (hayErrores(encontrados)) return;
@@ -90,7 +96,10 @@ export default function ActualizarLibro() {
         precio: Number(datos.precio),
         numeroPaginas: Number(datos.numeroPaginas),
         fechaPublicacion: datos.fechaPublicacion,
-        genero
+        genero,
+        editorial: textoONulo(datos.editorial),
+        sinopsis: textoONulo(datos.sinopsis),
+        version: libro.version ?? null // concurrencia optimista: la versión que se leyó al buscar
       });
       libroObservable.notificar();
       avisar({ titulo: "Cambios guardados", descripcion: `«${actualizado.titulo}» se actualizó en el servidor.` });
@@ -148,6 +157,10 @@ export default function ActualizarLibro() {
                   <Campo etiqueta="Fecha de publicación" type="datetime-local" value={datos.fechaPublicacion}
                          onChange={cambiar("fechaPublicacion")} error={errores.fechaPublicacion} />
                   <Selector etiqueta="Género" valor={genero} opciones={OPCIONES_GENERO} alCambiar={(g) => setGenero(g || genero)} />
+                  <Campo etiqueta="Editorial (opcional)" value={datos.editorial} onChange={cambiar("editorial")}
+                         error={errores.editorial} ancho />
+                  <AreaTexto etiqueta="Sinopsis (opcional)" value={datos.sinopsis} onChange={cambiar("sinopsis")}
+                             error={errores.sinopsis} maximo={500} />
                 </div>
               </section>
               <div className="acciones acciones-pie">

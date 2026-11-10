@@ -1,9 +1,10 @@
 import { FormEvent, useState } from "react";
 import { Check } from "lucide-react";
-import { crearLibro } from "../../graphql/servicioLibro";
+import { crearLibro, textoONulo } from "../../graphql/servicioLibro";
 import { mensajeDeError } from "../../graphql/clienteGraphQL";
 import { libroObservable } from "../../observer/Observable";
 import { useAvisos } from "../../componentes/ui/Avisos";
+import { AreaTexto } from "../../componentes/ui/AreaTexto";
 import { Banner } from "../../componentes/ui/Banner";
 import { Boton } from "../../componentes/ui/Boton";
 import { Campo } from "../../componentes/ui/Campo";
@@ -12,12 +13,15 @@ import { Selector } from "../../componentes/ui/Selector";
 import { OPCIONES_GENERO } from "../../componentes/opciones";
 import { Genero } from "../../types";
 import {
-  Errores, hayErrores, validar, validarDecimalPositivo, validarEnteroPositivo, validarFecha, validarObligatorio
+  Errores, hayErrores, validar, validarDecimalPositivo, validarEnteroPositivo, validarFechaNoFutura, validarIsbn, validarLargoMaximo,
+  validarObligatorio
 } from "../../validaciones";
 
-type CampoLibro = "isbn" | "titulo" | "autor" | "precio" | "numeroPaginas" | "fechaPublicacion";
+type CampoLibro = "isbn" | "titulo" | "autor" | "precio" | "numeroPaginas" | "fechaPublicacion" | "editorial" | "sinopsis";
 
-const VACIO = { isbn: "", titulo: "", autor: "", precio: "", numeroPaginas: "", fechaPublicacion: "" };
+const VACIO = {
+  isbn: "", titulo: "", autor: "", precio: "", numeroPaginas: "", fechaPublicacion: "", editorial: "", sinopsis: ""
+};
 
 /** Caso de uso: Adicionar Libro (único propósito de esta pantalla). */
 export default function AgregarLibro() {
@@ -37,12 +41,14 @@ export default function AgregarLibro() {
     e.preventDefault();
     setErrorServidor(null);
     const encontrados = validar<CampoLibro>({
-      isbn: validarObligatorio(datos.isbn),
+      isbn: validarIsbn(datos.isbn),
       titulo: validarObligatorio(datos.titulo),
       autor: validarObligatorio(datos.autor),
       precio: validarDecimalPositivo(datos.precio),
       numeroPaginas: validarEnteroPositivo(datos.numeroPaginas),
-      fechaPublicacion: validarFecha(datos.fechaPublicacion)
+      fechaPublicacion: validarFechaNoFutura(datos.fechaPublicacion),
+      editorial: validarLargoMaximo(datos.editorial, 120),
+      sinopsis: validarLargoMaximo(datos.sinopsis, 500)
     });
     setErrores(encontrados);
     if (hayErrores(encontrados)) return;
@@ -56,7 +62,9 @@ export default function AgregarLibro() {
         precio: Number(datos.precio),
         numeroPaginas: Number(datos.numeroPaginas),
         fechaPublicacion: datos.fechaPublicacion,
-        genero
+        genero,
+        editorial: textoONulo(datos.editorial),
+        sinopsis: textoONulo(datos.sinopsis)
       });
       libroObservable.notificar(); // Observer: avisa a Listar que debe refrescarse
       avisar({ titulo: "Libro adicionado", descripcion: `«${libro.titulo}» quedó registrado con el ISBN ${libro.isbn}.` });
@@ -112,6 +120,19 @@ export default function AgregarLibro() {
                    value={datos.precio} onChange={cambiar("precio")} error={errores.precio} />
             <Campo etiqueta="Número de páginas" type="number" inputMode="numeric" min="1" step="1"
                    value={datos.numeroPaginas} onChange={cambiar("numeroPaginas")} error={errores.numeroPaginas} />
+          </div>
+        </section>
+
+        <section className="seccion-formulario" aria-labelledby="sec-opcionales">
+          <div>
+            <h2 id="sec-opcionales">Datos opcionales</h2>
+            <p className="seccion-formulario-ayuda">Se pueden dejar vacíos.</p>
+          </div>
+          <div className="rejilla-campos">
+            <Campo etiqueta="Editorial (opcional)" value={datos.editorial} onChange={cambiar("editorial")}
+                   error={errores.editorial} ancho />
+            <AreaTexto etiqueta="Sinopsis (opcional)" value={datos.sinopsis} onChange={cambiar("sinopsis")}
+                       error={errores.sinopsis} maximo={500} />
           </div>
         </section>
 

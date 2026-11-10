@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { List, LucideIcon, Pencil, Plus, RotateCw, Search, Trash2 } from "lucide-react";
+import { BookOpenText, List, LucideIcon, Pencil, Plus, RotateCw, Search, Trash2 } from "lucide-react";
 import { consultarResumenInventario } from "../graphql/servicioResumen";
 import { mensajeDeError } from "../graphql/clienteGraphQL";
 import { ejemplarObservable, libroObservable } from "../observer/Observable";
@@ -9,7 +9,7 @@ import { Banner } from "../componentes/ui/Banner";
 import { Boton } from "../componentes/ui/Boton";
 import { Encabezado } from "../componentes/ui/Encabezado";
 import { COLOR_ESTADO, InsigniaEstado } from "../componentes/ui/Insignias";
-import { formatearFechaLarga } from "../formato";
+import { formatearFechaLarga, formatearPrecio } from "../formato";
 import { ConteoEstado, ESTADOS_EJEMPLAR, EstadoEjemplar, ResumenInventario } from "../types";
 
 const NOMBRE_ESTADO: Record<EstadoEjemplar, string> = {
@@ -67,7 +67,19 @@ export default function MenuPrincipal() {
         <Cifra etiqueta="Ejemplares" valor={resumen?.totalEjemplares ?? null} detalle="Copias físicas registradas" />
         <Cifra etiqueta="Disponibles" valor={cantidad("DISPONIBLE")} detalle="Listas para prestar o vender" />
         <Cifra etiqueta="Prestados" valor={cantidad("PRESTADO")} detalle="Fuera de la librería" />
+        <Cifra
+          etiqueta="Valor del inventario"
+          valor={resumen ? formatearPrecio(resumen.valorInventario) : null}
+          detalle="Suma del precio de reposición"
+        />
       </section>
+
+      {resumen && (
+        <p className="tareas-servidor">
+          Calculado en {resumen.duracionMs} ms por 3 tareas en paralelo en el servidor (
+          {resumen.tareas.map((t) => `${t.nombre} en ${t.hilo}${t.exitosa ? "" : " — falló"}`).join(", ")}).
+        </p>
+      )}
 
       <div className="inicio-rejilla">
         <EstadoEjemplares conteos={resumen?.ejemplaresPorEstado ?? null} total={resumen?.totalEjemplares ?? null} />
@@ -85,7 +97,7 @@ export default function MenuPrincipal() {
   );
 }
 
-function Cifra({ etiqueta, valor, detalle }: { etiqueta: string; valor: number | null; detalle: string }) {
+function Cifra({ etiqueta, valor, detalle }: { etiqueta: string; valor: number | string | null; detalle: string }) {
   return (
     <div className="panel cifra-panel">
       <p className="cifra-etiqueta">{etiqueta}</p>
@@ -136,11 +148,14 @@ const ACCESOS: { ruta: string; texto: string; icono: LucideIcon }[] = [
 
 function Accesos({ titulo, base }: { titulo: string; base: string }) {
   const singular = titulo === "Libros" ? "libro" : "ejemplar";
+  const accesos = titulo === "Libros"
+    ? [...ACCESOS.slice(0, 2), { ruta: "detalle", texto: "Detalle del", icono: BookOpenText }, ...ACCESOS.slice(2)]
+    : ACCESOS;
   return (
     <div>
       <h3>{titulo}</h3>
       <ul>
-        {ACCESOS.map(({ ruta, texto, icono: Icono }) => (
+        {accesos.map(({ ruta, texto, icono: Icono }) => (
           <li key={ruta}>
             <Link className="acceso" to={`${base}/${ruta}`}>
               <Icono size={16} aria-hidden="true" />

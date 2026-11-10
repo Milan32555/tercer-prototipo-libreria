@@ -1,9 +1,12 @@
 import { FormEvent, useState } from "react";
 import { Check } from "lucide-react";
 import { crearEjemplar } from "../../graphql/servicioEjemplar";
+import { textoONulo } from "../../graphql/servicioLibro";
 import { mensajeDeError } from "../../graphql/clienteGraphQL";
 import { ejemplarObservable } from "../../observer/Observable";
+import { CampoLibroPorIsbn } from "../../componentes/CampoLibroPorIsbn";
 import { OPCIONES_ESTADO } from "../../componentes/opciones";
+import { AreaTexto } from "../../componentes/ui/AreaTexto";
 import { useAvisos } from "../../componentes/ui/Avisos";
 import { Banner } from "../../componentes/ui/Banner";
 import { Boton } from "../../componentes/ui/Boton";
@@ -12,14 +15,18 @@ import { Encabezado } from "../../componentes/ui/Encabezado";
 import { Selector } from "../../componentes/ui/Selector";
 import { EstadoEjemplar } from "../../types";
 import {
-  Errores, hayErrores, validar, validarDecimalPositivo, validarEnteroNoNegativo, validarFecha, validarObligatorio
+  Errores, hayErrores, validar, validarCodigoEjemplar, validarDecimalPositivo, validarEnteroNoNegativo,
+  validarFechaNoFutura, validarIsbn, validarLargoMaximo, validarObligatorio
 } from "../../validaciones";
 
-type CampoEjemplar = "codigo" | "isbnLibro" | "ubicacion" | "fechaIngreso" | "precioReposicion" | "numeroPrestamos";
+type CampoEjemplar =
+  | "codigo" | "isbnLibro" | "ubicacion" | "fechaIngreso" | "precioReposicion" | "numeroPrestamos" | "observaciones";
 
-const VACIO = { codigo: "", isbnLibro: "", ubicacion: "", fechaIngreso: "", precioReposicion: "", numeroPrestamos: "0" };
+const VACIO = {
+  codigo: "", isbnLibro: "", ubicacion: "", fechaIngreso: "", precioReposicion: "", numeroPrestamos: "0", observaciones: ""
+};
 
-/** Caso de uso: Adicionar Ejemplar (una copia física de un libro que ya existe). */
+/** Caso de uso: Adicionar Ejemplar (una copia física de un libro que ya existe, elegido por su ISBN). */
 export default function AgregarEjemplar() {
   const [datos, setDatos] = useState(VACIO);
   const [estado, setEstado] = useState<EstadoEjemplar>("DISPONIBLE");
@@ -28,21 +35,23 @@ export default function AgregarEjemplar() {
   const [enviando, setEnviando] = useState(false);
   const avisar = useAvisos();
 
-  const cambiar = (campo: CampoEjemplar) => (e: { target: { value: string } }) => {
-    setDatos((d) => ({ ...d, [campo]: e.target.value }));
+  const poner = (campo: CampoEjemplar, valor: string) => {
+    setDatos((d) => ({ ...d, [campo]: valor }));
     if (errores[campo]) setErrores((err) => ({ ...err, [campo]: undefined }));
   };
+  const cambiar = (campo: CampoEjemplar) => (e: { target: { value: string } }) => poner(campo, e.target.value);
 
   async function manejarEnvio(e: FormEvent) {
     e.preventDefault();
     setErrorServidor(null);
     const encontrados = validar<CampoEjemplar>({
-      codigo: validarObligatorio(datos.codigo),
-      isbnLibro: validarObligatorio(datos.isbnLibro),
+      codigo: validarCodigoEjemplar(datos.codigo),
+      isbnLibro: validarIsbn(datos.isbnLibro),
       ubicacion: validarObligatorio(datos.ubicacion),
-      fechaIngreso: validarFecha(datos.fechaIngreso),
+      fechaIngreso: validarFechaNoFutura(datos.fechaIngreso),
       precioReposicion: validarDecimalPositivo(datos.precioReposicion),
-      numeroPrestamos: validarEnteroNoNegativo(datos.numeroPrestamos)
+      numeroPrestamos: validarEnteroNoNegativo(datos.numeroPrestamos),
+      observaciones: validarLargoMaximo(datos.observaciones, 300)
     });
     setErrores(encontrados);
     if (hayErrores(encontrados)) return;
@@ -50,16 +59,20 @@ export default function AgregarEjemplar() {
     setEnviando(true);
     try {
       const ejemplar = await crearEjemplar({
-        codigo: datos.codigo.trim(),
+        codigo: datos.codigo.trim().toUpperCase(),
+        isbnLibro: datos.isbnLibro.trim(),
         estado,
         ubicacion: datos.ubicacion.trim(),
         fechaIngreso: datos.fechaIngreso,
         precioReposicion: Number(datos.precioReposicion),
         numeroPrestamos: Number(datos.numeroPrestamos),
-        isbnLibro: datos.isbnLibro.trim()
+        observaciones: textoONulo(datos.observaciones)
       });
       ejemplarObservable.notificar();
-      avisar({ titulo: "Ejemplar adicionado", descripcion: `${ejemplar.codigo} quedó registrado para el libro ${ejemplar.isbnLibro}.` });
+      avisar({
+        titulo: "Ejemplar adicionado",
+        descripcion: `${ejemplar.codigo} quedó registrado para «${ejemplar.libro?.titulo ?? ejemplar.isbnLibro}».`
+      });
       setDatos(VACIO);
       setEstado("DISPONIBLE");
     } catch (err) {
@@ -79,13 +92,12 @@ export default function AgregarEjemplar() {
         <section className="seccion-formulario" aria-labelledby="sec-ejemplar">
           <div>
             <h2 id="sec-ejemplar">Identificación</h2>
-            <p className="seccion-formulario-ayuda">El código es único por copia. El libro debe existir: búscalo por su ISBN.</p>
+            <p className="seccion-formulario-ayuda">El código es único por copia (EJ-000). El libro debe existir: elígelo por su ISBN.</p>
           </div>
           <div className="rejilla-campos">
             <Campo etiqueta="Código del ejemplar" value={datos.codigo} onChange={cambiar("codigo")} error={errores.codigo}
                    placeholder="EJ-021" autoComplete="off" />
-            <Campo etiqueta="ISBN del libro" value={datos.isbnLibro} onChange={cambiar("isbnLibro")} error={errores.isbnLibro}
-                   placeholder="978-0307474728" autoComplete="off" />
+            <CampoLibroPorIsbn valor={datos.isbnLibro} alCambiar={(v) => poner("isbnLibro", v)} error={errores.isbnLibro} />
           </div>
         </section>
 
@@ -113,6 +125,8 @@ export default function AgregarEjemplar() {
                    value={datos.precioReposicion} onChange={cambiar("precioReposicion")} error={errores.precioReposicion} />
             <Campo etiqueta="Número de préstamos" type="number" inputMode="numeric" min="0" step="1"
                    value={datos.numeroPrestamos} onChange={cambiar("numeroPrestamos")} error={errores.numeroPrestamos} />
+            <AreaTexto etiqueta="Observaciones (opcional)" value={datos.observaciones} onChange={cambiar("observaciones")}
+                       error={errores.observaciones} maximo={300} />
           </div>
         </section>
 

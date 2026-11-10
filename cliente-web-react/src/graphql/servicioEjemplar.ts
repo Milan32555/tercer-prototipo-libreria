@@ -1,33 +1,38 @@
 import { ClienteGraphQL } from "./clienteGraphQL";
-import { EstadoEjemplar, Ejemplar } from "../types";
+import { EstadoEjemplar, Ejemplar, EjemplarConLibro, EjemplarInput, Pagina } from "../types";
 
-const CAMPOS_EJEMPLAR = `codigo estado ubicacion fechaIngreso precioReposicion numeroPrestamos isbnLibro`;
+/** Todos los atributos del ejemplar, más el título y el autor de su libro. */
+export const CAMPOS_EJEMPLAR = `id codigo libroId isbnLibro estado ubicacion fechaIngreso precioReposicion numeroPrestamos
+  observaciones version libro { titulo autor }`;
 
 const graphql = () => ClienteGraphQL.getInstancia();
 
-export interface ListadoEjemplares {
-  ejemplares: Ejemplar[];
-  total: number;
-}
-
 /**
- * Listar con filtro: el servidor filtra y también cuenta cuántos ejemplares cumplen el filtro
- * (las dos cosas en una sola petición GraphQL).
+ * Listar ejemplares (consulta personalizada `ejemplaresConLibro`): TODOS los atributos de cada
+ * ejemplar más el ISBN, título y autor de su libro, con filtro por estado y/o ISBN y paginado.
  */
-export async function listarEjemplaresFiltrados(
+export async function listarEjemplaresConLibro(
   estado: EstadoEjemplar | "",
-  isbnLibro: string
-): Promise<ListadoEjemplares> {
-  const data = await graphql().ejecutar<{ ejemplaresFiltrados: Ejemplar[]; totalEjemplaresFiltrados: number }>(
-    `query ($estado: EstadoEjemplar, $isbnLibro: String) {
-       ejemplaresFiltrados(estado: $estado, isbnLibro: $isbnLibro) { ${CAMPOS_EJEMPLAR} }
-       totalEjemplaresFiltrados(estado: $estado, isbnLibro: $isbnLibro)
+  isbn: string,
+  pagina: number,
+  tamanio: number
+): Promise<Pagina<EjemplarConLibro>> {
+  const data = await graphql().ejecutar<{ ejemplaresConLibro: Pagina<EjemplarConLibro> }>(
+    `query ($estado: EstadoEjemplar, $isbn: String, $pagina: Int!, $tamanio: Int!) {
+       ejemplaresConLibro(estado: $estado, isbn: $isbn, pagina: $pagina, tamanio: $tamanio) {
+         pagina tamanio totalElementos totalPaginas
+         contenido {
+           id codigo libroId isbnLibro tituloLibro autorLibro estado ubicacion fechaIngreso
+           precioReposicion numeroPrestamos observaciones version
+         }
+       }
      }`,
-    { estado: estado || null, isbnLibro: isbnLibro.trim() || null }
+    { estado: estado || null, isbn: isbn.trim() || null, pagina, tamanio }
   );
-  return { ejemplares: data.ejemplaresFiltrados, total: data.totalEjemplaresFiltrados };
+  return data.ejemplaresConLibro;
 }
 
+/** Búsqueda individual, criterio 1: el código del ejemplar. */
 export async function buscarEjemplarPorCodigo(codigo: string): Promise<Ejemplar | null> {
   const data = await graphql().ejecutar<{ ejemplarPorCodigo: Ejemplar | null }>(
     `query ($codigo: ID!) { ejemplarPorCodigo(codigo: $codigo) { ${CAMPOS_EJEMPLAR} } }`,
@@ -36,32 +41,39 @@ export async function buscarEjemplarPorCodigo(codigo: string): Promise<Ejemplar 
   return data.ejemplarPorCodigo;
 }
 
+/** Búsqueda individual, criterio 2: ISBN del libro + ubicación (puede haber varias copias). */
+export async function buscarEjemplaresPorLibroYUbicacion(isbn: string, ubicacion: string): Promise<Ejemplar[]> {
+  const data = await graphql().ejecutar<{ ejemplaresPorLibroYUbicacion: Ejemplar[] }>(
+    `query ($isbn: String!, $ubicacion: String!) {
+       ejemplaresPorLibroYUbicacion(isbn: $isbn, ubicacion: $ubicacion) { ${CAMPOS_EJEMPLAR} }
+     }`,
+    { isbn: isbn.trim(), ubicacion: ubicacion.trim() }
+  );
+  return data.ejemplaresPorLibroYUbicacion;
+}
+
 /** Número de revisión de la colección en el servidor (lo usa el Observer de Listar). */
 export async function consultarRevisionEjemplares(): Promise<number> {
-  const data = await graphql().ejecutar<{ revisionEjemplares: number }>(
-    `query { revisionEjemplares }`
-  );
+  const data = await graphql().ejecutar<{ revisionEjemplares: number }>(`query { revisionEjemplares }`);
   return data.revisionEjemplares;
 }
 
-export async function crearEjemplar(input: Ejemplar): Promise<Ejemplar> {
+export async function crearEjemplar(input: EjemplarInput): Promise<Ejemplar> {
   const data = await graphql().ejecutar<{ crearEjemplar: Ejemplar }>(
     `mutation ($input: EjemplarInput!) { crearEjemplar(input: $input) { ${CAMPOS_EJEMPLAR} } }`,
-    { input }
+    { input: { ...input, version: null } }
   );
   return data.crearEjemplar;
 }
 
-/** numeroPrestamos no se envía: al actualizar lo calcula el servidor. */
-export async function actualizarEjemplar(
-  codigo: string,
-  input: Omit<Ejemplar, "codigo" | "isbnLibro" | "numeroPrestamos">
-): Promise<Ejemplar> {
+/**
+ * Actualiza el ejemplar cuyo código viene en el input. numeroPrestamos no se envía: lo lleva el
+ * servidor (suma 1 al pasar a Prestado). Se envía la versión leída al buscarlo.
+ */
+export async function actualizarEjemplar(input: EjemplarInput): Promise<Ejemplar> {
   const data = await graphql().ejecutar<{ actualizarEjemplar: Ejemplar }>(
-    `mutation ($codigo: ID!, $input: EjemplarUpdateInput!) {
-       actualizarEjemplar(codigo: $codigo, input: $input) { ${CAMPOS_EJEMPLAR} }
-     }`,
-    { codigo, input }
+    `mutation ($input: EjemplarInput!) { actualizarEjemplar(input: $input) { ${CAMPOS_EJEMPLAR} } }`,
+    { input: { ...input, numeroPrestamos: null } }
   );
   return data.actualizarEjemplar;
 }

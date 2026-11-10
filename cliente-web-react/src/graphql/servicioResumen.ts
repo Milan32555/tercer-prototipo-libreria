@@ -2,8 +2,8 @@ import { ClienteGraphQL } from "./clienteGraphQL";
 import { ResumenInventario } from "../types";
 
 /**
- * Resumen del inventario para la ventana principal: totales y ejemplares por estado.
- * Todo lo calcula el servidor; la pantalla solo lo muestra.
+ * Resumen del inventario para la ventana principal: totales, ejemplares por estado y valor del
+ * inventario. Lo calculan 3 tareas en paralelo en el servidor; la pantalla solo lo muestra.
  */
 export async function consultarResumenInventario(): Promise<ResumenInventario> {
   const data = await ClienteGraphQL.getInstancia().ejecutar<{ resumenInventario: ResumenInventario }>(
@@ -12,6 +12,9 @@ export async function consultarResumenInventario(): Promise<ResumenInventario> {
          totalLibros
          totalEjemplares
          ejemplaresPorEstado { estado cantidad porcentaje }
+         valorInventario
+         duracionMs
+         tareas { nombre hilo duracionMs exitosa }
        }
      }`
   );

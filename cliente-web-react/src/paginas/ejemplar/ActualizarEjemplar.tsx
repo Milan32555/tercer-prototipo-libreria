@@ -1,11 +1,13 @@
 import { FormEvent, useState } from "react";
 import { Lock, RotateCcw, Save } from "lucide-react";
 import { actualizarEjemplar, buscarEjemplarPorCodigo } from "../../graphql/servicioEjemplar";
+import { textoONulo } from "../../graphql/servicioLibro";
 import { mensajeDeError } from "../../graphql/clienteGraphQL";
 import { ejemplarObservable } from "../../observer/Observable";
 import { aValorDeInputFecha } from "../../formato";
 import FichaEjemplar from "../../componentes/FichaEjemplar";
 import { OPCIONES_ESTADO } from "../../componentes/opciones";
+import { AreaTexto } from "../../componentes/ui/AreaTexto";
 import { Ayuda } from "../../componentes/ui/Ayuda";
 import { useAvisos } from "../../componentes/ui/Avisos";
 import { Banner } from "../../componentes/ui/Banner";
@@ -16,9 +18,11 @@ import { Encabezado } from "../../componentes/ui/Encabezado";
 import { Selector } from "../../componentes/ui/Selector";
 import { SinResultados } from "../../componentes/ui/SinResultados";
 import { EstadoEjemplar, Ejemplar } from "../../types";
-import { Errores, hayErrores, validar, validarDecimalPositivo, validarFecha, validarObligatorio } from "../../validaciones";
+import {
+  Errores, hayErrores, validar, validarDecimalPositivo, validarFechaNoFutura, validarLargoMaximo, validarObligatorio
+} from "../../validaciones";
 
-type CampoEditable = "ubicacion" | "fechaIngreso" | "precioReposicion";
+type CampoEditable = "ubicacion" | "fechaIngreso" | "precioReposicion" | "observaciones";
 
 /**
  * Caso de uso: Actualizar Ejemplar. Primero se busca y se muestra TODA su información actual;
@@ -29,7 +33,9 @@ export default function ActualizarEjemplar() {
   const [ejemplar, setEjemplar] = useState<Ejemplar | null>(null);
   const [guardado, setGuardado] = useState<Ejemplar | null>(null);
   const [estado, setEstado] = useState<EstadoEjemplar>("DISPONIBLE");
-  const [datos, setDatos] = useState<Record<CampoEditable, string>>({ ubicacion: "", fechaIngreso: "", precioReposicion: "" });
+  const [datos, setDatos] = useState<Record<CampoEditable, string>>({
+    ubicacion: "", fechaIngreso: "", precioReposicion: "", observaciones: ""
+  });
   const [errores, setErrores] = useState<Errores<CampoEditable>>({});
   const [sinResultado, setSinResultado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +56,8 @@ export default function ActualizarEjemplar() {
       setDatos({
         ubicacion: resultado.ubicacion,
         fechaIngreso: aValorDeInputFecha(resultado.fechaIngreso),
-        precioReposicion: String(resultado.precioReposicion)
+        precioReposicion: String(resultado.precioReposicion),
+        observaciones: resultado.observaciones ?? ""
       });
     } catch (err) {
       setError(mensajeDeError(err));
@@ -69,19 +76,24 @@ export default function ActualizarEjemplar() {
     if (!ejemplar) return;
     const encontrados = validar<CampoEditable>({
       ubicacion: validarObligatorio(datos.ubicacion),
-      fechaIngreso: validarFecha(datos.fechaIngreso),
-      precioReposicion: validarDecimalPositivo(datos.precioReposicion)
+      fechaIngreso: validarFechaNoFutura(datos.fechaIngreso),
+      precioReposicion: validarDecimalPositivo(datos.precioReposicion),
+      observaciones: validarLargoMaximo(datos.observaciones, 300)
     });
     setErrores(encontrados);
     if (hayErrores(encontrados)) return;
 
     setCargando(true); setError(null);
     try {
-      const actualizado = await actualizarEjemplar(ejemplar.codigo, {
+      const actualizado = await actualizarEjemplar({
+        codigo: ejemplar.codigo,
+        isbnLibro: ejemplar.isbnLibro,
         estado,
         ubicacion: datos.ubicacion.trim(),
         fechaIngreso: datos.fechaIngreso,
-        precioReposicion: Number(datos.precioReposicion)
+        precioReposicion: Number(datos.precioReposicion),
+        observaciones: textoONulo(datos.observaciones),
+        version: ejemplar.version ?? null // concurrencia optimista: la versión que se leyó al buscar
       });
       ejemplarObservable.notificar();
       avisar({
@@ -153,6 +165,8 @@ export default function ActualizarEjemplar() {
                     ayuda="Lo calcula el servidor: suma 1 cada vez que el ejemplar pasa a Prestado."
                     ancho
                   />
+                  <AreaTexto etiqueta="Observaciones (opcional)" value={datos.observaciones} onChange={cambiar("observaciones")}
+                             error={errores.observaciones} maximo={300} />
                 </div>
               </section>
               <div className="acciones acciones-pie">

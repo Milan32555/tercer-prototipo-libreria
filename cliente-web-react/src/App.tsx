@@ -10,6 +10,7 @@ import ActualizarLibro from "./paginas/libro/ActualizarLibro";
 import EliminarLibro from "./paginas/libro/EliminarLibro";
 import ListarLibros from "./paginas/libro/ListarLibros";
 import ConsultarLibro from "./paginas/libro/ConsultarLibro";
+import DetalleLibro from "./paginas/libro/DetalleLibro";
 
 import AgregarEjemplar from "./paginas/ejemplar/AgregarEjemplar";
 import ActualizarEjemplar from "./paginas/ejemplar/ActualizarEjemplar";
@@ -28,6 +29,7 @@ export default function App() {
 
             <Route path="/libros/listar" element={<ListarLibros />} />
             <Route path="/libros/consultar" element={<ConsultarLibro />} />
+            <Route path="/libros/detalle" element={<DetalleLibro />} />
             <Route path="/libros/agregar" element={<AgregarLibro />} />
             <Route path="/libros/actualizar" element={<ActualizarLibro />} />
             <Route path="/libros/eliminar" element={<EliminarLibro />} />

@@ -1,10 +1,12 @@
 import { Link, NavLink } from "react-router-dom";
-import { House, Info, Library, List, LucideIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { BookOpenText, House, Info, Library, List, LucideIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
-const VERSION = "1.0.0";
+export const VERSION = "3.0.0";
+
+type CasoDeUso = { ruta: string; texto: string; icono: LucideIcon };
 
 /** Un caso de uso por opción, en el orden en que se usan más. */
-const CASOS_DE_USO: { ruta: string; texto: string; icono: LucideIcon }[] = [
+const CASOS_DE_USO: CasoDeUso[] = [
   { ruta: "listar", texto: "Listar", icono: List },
   { ruta: "consultar", texto: "Consultar", icono: Search },
   { ruta: "agregar", texto: "Adicionar", icono: Plus },
@@ -35,12 +37,17 @@ function Enlace({ a, texto, icono: Icono, alNavegar, exacto = false }: {
   );
 }
 
-function Grupo({ id, titulo, base, alNavegar }: { id: string; titulo: string; base: string; alNavegar?: () => void }) {
+/** Solo para Libros: la consulta maestro + detalle. */
+const DETALLE: CasoDeUso = { ruta: "detalle", texto: "Detalle", icono: BookOpenText };
+
+function Grupo({ id, titulo, base, alNavegar, extra = [] }: {
+  id: string; titulo: string; base: string; alNavegar?: () => void; extra?: CasoDeUso[];
+}) {
   return (
     <div className="nav-grupo">
       <p className="nav-seccion" id={id}>{titulo}</p>
       <ul aria-labelledby={id}>
-        {CASOS_DE_USO.map((c) => (
+        {[...CASOS_DE_USO.slice(0, 2), ...extra, ...CASOS_DE_USO.slice(2)].map((c) => (
           <Enlace key={c.ruta} a={`${base}/${c.ruta}`} texto={c.texto} icono={c.icono} alNavegar={alNavegar} />
         ))}
       </ul>
@@ -59,7 +66,7 @@ export default function Navegacion({ prefijo = "nav", alNavegar }: { prefijo?: s
       <ul className="nav-grupo">
         <Enlace a="/" texto="Inicio" icono={House} alNavegar={alNavegar} exacto />
       </ul>
-      <Grupo id={`${prefijo}-libros`} titulo="Libros" base="/libros" alNavegar={alNavegar} />
+      <Grupo id={`${prefijo}-libros`} titulo="Libros" base="/libros" alNavegar={alNavegar} extra={[DETALLE]} />
       <Grupo id={`${prefijo}-ejemplares`} titulo="Ejemplares" base="/ejemplares" alNavegar={alNavegar} />
       <div className="nav-grupo">
         <p className="nav-seccion" id={`${prefijo}-ayuda`}>Ayuda</p>

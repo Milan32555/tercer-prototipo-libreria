@@ -34,6 +34,37 @@ export function validarFecha(valor: string): string | null {
   return valor.trim() === "" ? "Elige la fecha y la hora." : null;
 }
 
+/** ISBN-10 o ISBN-13: solo dígitos y guiones (el ISBN-10 puede terminar en X). */
+export function validarIsbn(valor: string): string | null {
+  const texto = valor.trim();
+  if (texto === "") return "Este campo es obligatorio.";
+  const digitos = texto.replace(/-/g, "");
+  const formato = /^\d[\d-]*[\dXx]$/.test(texto) && !texto.includes("--");
+  return formato && /^(\d{9}[\dXx]|\d{13})$/.test(digitos)
+    ? null
+    : "El ISBN debe tener 10 o 13 dígitos (se permiten guiones).";
+}
+
+/** Código del ejemplar: EJ- seguido de 3 a 6 dígitos (EJ-000). */
+export function validarCodigoEjemplar(valor: string): string | null {
+  const texto = valor.trim();
+  if (texto === "") return "Este campo es obligatorio.";
+  return /^EJ-\d{3,6}$/i.test(texto) ? null : "Usa el formato EJ-000 (EJ- y de 3 a 6 dígitos).";
+}
+
+/** Fecha obligatoria que no puede ser futura. */
+export function validarFechaNoFutura(valor: string, ahora: Date = new Date()): string | null {
+  if (valor.trim() === "") return "Elige la fecha y la hora.";
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return "Fecha no válida.";
+  return fecha.getTime() > ahora.getTime() ? "La fecha no puede ser futura." : null;
+}
+
+/** Texto opcional con un largo máximo. */
+export function validarLargoMaximo(valor: string, maximo: number): string | null {
+  return valor.trim().length > maximo ? `Máximo ${maximo} caracteres.` : null;
+}
+
 export type Errores<K extends string> = Partial<Record<K, string>>;
 
 /** Aplica cada validador a su campo y devuelve solo los campos con error. */

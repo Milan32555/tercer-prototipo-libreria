@@ -32,6 +32,8 @@ interface TablaDatosProps<T> {
   error?: string | null;
   alReintentar?: () => void;
   vacio: EstadoVacio;
+  /** Muchas columnas: no se parten las celdas y la tabla se desplaza en horizontal. */
+  ancha?: boolean;
 }
 
 const FILAS_CARGA = 6;
@@ -41,7 +43,7 @@ const FILAS_CARGA = 6;
  * reintento, vacía con una acción útil y con datos.
  */
 export function TablaDatos<T>({
-  etiqueta, columnas, filas, claveFila, cargandoInicial, ocupada = false, error, alReintentar, vacio
+  etiqueta, columnas, filas, claveFila, cargandoInicial, ocupada = false, error, alReintentar, vacio, ancha = false
 }: TablaDatosProps<T>) {
   const claseColumna = (c: Columna<T>) => clases(c.numerica && "numero", c.apagada && "apagado") || undefined;
 
@@ -87,7 +89,7 @@ export function TablaDatos<T>({
 
   return (
     <div className="tabla-contenedor">
-      <table className="tabla" aria-busy={cargandoInicial || ocupada || undefined}>
+      <table className={clases("tabla", ancha && "tabla-ancha")} aria-busy={cargandoInicial || ocupada || undefined}>
         <caption className="visualmente-oculto">{etiqueta}</caption>
         <thead>
           <tr>

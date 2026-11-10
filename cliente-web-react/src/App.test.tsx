@@ -9,7 +9,11 @@ import { consultarRevisionEjemplares } from "./graphql/servicioEjemplar";
 import { ErrorGraphQL } from "./graphql/clienteGraphQL";
 import { ResumenInventario } from "./types";
 
-vi.mock("./graphql/servicioLibro", () => ({ consultarRevisionLibros: vi.fn() }));
+vi.mock("./graphql/servicioLibro", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./graphql/servicioLibro")>()),
+  consultarRevisionLibros: vi.fn(),
+  listarLibros: vi.fn().mockResolvedValue({ contenido: [], pagina: 0, tamanio: 10, totalElementos: 0, totalPaginas: 0 })
+}));
 vi.mock("./graphql/servicioEjemplar", () => ({ consultarRevisionEjemplares: vi.fn() }));
 vi.mock("./graphql/servicioResumen", () => ({ consultarResumenInventario: vi.fn() }));
 
@@ -22,6 +26,13 @@ const RESUMEN: ResumenInventario = {
     { estado: "PRESTADO", cantidad: 6, porcentaje: 30 },
     { estado: "DANIADO", cantidad: 3, porcentaje: 15 },
     { estado: "DADO_DE_BAJA", cantidad: 1, porcentaje: 5 }
+  ],
+  valorInventario: 1162000,
+  duracionMs: 12,
+  tareas: [
+    { nombre: "contar-libros", hilo: "tarea-1", duracionMs: 3, exitosa: true },
+    { nombre: "contar-ejemplares-por-estado", hilo: "tarea-2", duracionMs: 9, exitosa: true },
+    { nombre: "valor-total-inventario", hilo: "tarea-3", duracionMs: 7, exitosa: true }
   ]
 };
 
@@ -52,6 +63,8 @@ describe("Aplicación", () => {
     expect(within(cifras).getByText("20")).toBeInTheDocument();
     expect(within(cifras).getByText("10")).toBeInTheDocument();
     expect(within(cifras).getByText("6")).toBeInTheDocument();
+    expect(within(cifras).getByText(/1\.162\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/3 tareas en paralelo en el servidor/)).toHaveTextContent("contar-libros en tarea-1");
 
     const estados = screen.getByRole("region", { name: "Estado de los ejemplares" });
     const fila = (nombre: string) => within(estados).getByText(nombre).closest("li");
@@ -78,6 +91,7 @@ describe("Aplicación", () => {
     for (const opcion of ["Listar", "Consultar", "Adicionar", "Actualizar", "Eliminar"]) {
       expect(within(menu()).getAllByRole("link", { name: opcion })).toHaveLength(2);
     }
+    expect(within(menu()).getByRole("link", { name: "Detalle" })).toHaveAttribute("href", "/libros/detalle");
     expect(within(menu()).getByRole("list", { name: "Libros" })).toBeInTheDocument();
     expect(within(menu()).getByRole("list", { name: "Ejemplares" })).toBeInTheDocument();
   });
@@ -90,7 +104,7 @@ describe("Aplicación", () => {
     await user.click(within(menu()).getByRole("link", { name: "Acerca de..." }));
 
     expect(screen.getByRole("heading", { level: 1, name: "Acerca de" })).toBeInTheDocument();
-    expect(screen.getByText("1.0.0")).toBeInTheDocument();
+    expect(screen.getByText("3.0.0")).toBeInTheDocument();
     for (const integrante of ["Misael Gallo Tangarife", "Sara Zambrano", "Santiago Guimel", "Alejandra González"]) {
       expect(screen.getByText(integrante)).toBeInTheDocument();
     }

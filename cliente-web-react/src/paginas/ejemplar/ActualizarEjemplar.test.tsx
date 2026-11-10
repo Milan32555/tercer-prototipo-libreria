@@ -15,7 +15,9 @@ vi.mock("../../graphql/servicioEjemplar", () => ({
 
 const EJ_001: Ejemplar = {
   codigo: "EJ-001", estado: "DISPONIBLE", ubicacion: "Estante A1",
-  fechaIngreso: "2024-02-10T09:00:00", precioReposicion: 65000, numeroPrestamos: 4, isbnLibro: "978-0307474728"
+  fechaIngreso: "2024-02-10T09:00:00", precioReposicion: 65000, numeroPrestamos: 4, isbnLibro: "978-0307474728",
+  id: "6af377e075da53cd0c59cab0", libroId: "6af377e075da53cd0c59ca9f", observaciones: null, version: 2,
+  libro: { titulo: "Cien años de soledad", autor: "Gabriel García Márquez" }
 };
 
 async function buscar() {
@@ -44,6 +46,8 @@ describe("ActualizarEjemplar", () => {
     expect(prestamos).toHaveValue("4");
     expect(prestamos).toHaveAttribute("readonly");
     expect(screen.getByText("Lo calcula el servidor: suma 1 cada vez que el ejemplar pasa a Prestado.")).toBeInTheDocument();
+    expect(within(ficha).getByText("Gabriel García Márquez")).toBeInTheDocument();
+    expect(within(ficha).getByText("6af377e075da53cd0c59ca9f")).toBeInTheDocument();
   });
 
   it("guarda sin enviar préstamos y muestra el valor que calculó el servidor", async () => {
@@ -55,12 +59,14 @@ describe("ActualizarEjemplar", () => {
     await elegirOpcion(user, "Estado", "Prestado");
     await user.clear(screen.getByLabelText("Ubicación"));
     await user.type(screen.getByLabelText("Ubicación"), "Mostrador");
+    await user.type(screen.getByLabelText("Observaciones (opcional)"), "Prestado a Sara");
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     expect(await screen.findByText("Cambios guardados")).toBeInTheDocument();
     expect(screen.getByText("EJ-001 quedó prestado con 5 préstamos.")).toBeInTheDocument();
-    expect(actualizarEjemplar).toHaveBeenCalledWith("EJ-001", {
-      estado: "PRESTADO", ubicacion: "Mostrador", fechaIngreso: "2024-02-10T09:00", precioReposicion: 65000
+    expect(actualizarEjemplar).toHaveBeenCalledWith({
+      codigo: "EJ-001", isbnLibro: "978-0307474728", estado: "PRESTADO", ubicacion: "Mostrador",
+      fechaIngreso: "2024-02-10T09:00", precioReposicion: 65000, observaciones: "Prestado a Sara", version: 2
     });
     expect(notificar).toHaveBeenCalledTimes(1);
     const guardado = screen.getByRole("article", { name: "Ejemplar EJ-001" });

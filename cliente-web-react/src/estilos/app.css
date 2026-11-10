@@ -976,7 +976,7 @@ th.numero {
 /* ── Inicio ───────────────────────────────────────────────────────────────── */
 .cifras {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: var(--esp-4);
   margin-bottom: var(--esp-4);
 }
@@ -1447,4 +1447,150 @@ th.numero {
 
 main:focus {
   outline: none;
+}
+
+/* ---------------------------------------------------------------- Tercer prototipo (MongoDB) */
+
+/* Datos de la ficha que ocupan toda la fila (sinopsis, observaciones). */
+.ficha-datos .dato-ancho {
+  grid-column: 1 / -1;
+}
+
+.dato-vacio {
+  color: var(--gris-500);
+  font-style: italic;
+}
+
+.codigo-id {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--texto-12);
+  color: var(--gris-600);
+  word-break: break-all;
+}
+
+/* Campo de varias líneas. */
+.control-area {
+  align-items: stretch;
+}
+
+.control-area textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 72px;
+  padding: var(--esp-2) var(--esp-3);
+  border: 0;
+  border-radius: var(--radio-control);
+  background: transparent;
+  resize: vertical;
+}
+
+.control-area textarea:focus {
+  outline: none;
+}
+
+.contador {
+  font-variant-numeric: tabular-nums;
+}
+
+.contador.excedido {
+  color: var(--peligro-600);
+  font-weight: 600;
+}
+
+/* Libro elegido por su ISBN al adicionar un ejemplar. */
+.libro-elegido,
+.libro-no-existe {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-1);
+}
+
+.libro-elegido {
+  color: var(--marca-600);
+}
+
+.libro-no-existe {
+  color: var(--peligro-600);
+}
+
+/* Paginación de los Listar. */
+.paginador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-2) var(--esp-4);
+  padding: var(--esp-2) var(--esp-4);
+  border-top: 1px solid var(--gris-100);
+  color: var(--gris-600);
+  font-size: var(--texto-13);
+}
+
+.paginador-tamanio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.paginador-tamanio select {
+  height: 32px;
+  padding: 0 var(--esp-2);
+  border: 1px solid var(--gris-400);
+  border-radius: var(--radio-control);
+  background: var(--gris-0);
+  color: var(--gris-900);
+}
+
+.paginador-estado {
+  font-variant-numeric: tabular-nums;
+}
+
+.paginador-botones {
+  display: inline-flex;
+  gap: var(--esp-1);
+}
+
+/* Filtro de rango de precio. */
+.campo-precio {
+  flex: 0 1 150px;
+}
+
+/* Tabla ancha (Listar Ejemplares con todos los atributos): se desplaza en horizontal. */
+.tabla-ancha td,
+.tabla-ancha th {
+  white-space: nowrap;
+}
+
+.celda-texto-largo {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+/* Detalle de libro: conteos por estado. */
+.detalle-conteos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--esp-3);
+  padding: var(--esp-4);
+}
+
+.detalle-conteos > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+}
+
+.tareas-servidor {
+  margin-top: var(--esp-2);
+  color: var(--gris-500);
+  font-size: var(--texto-12);
+}
+
+@media (max-width: 640px) {
+  .campo-precio {
+    flex: 1 1 120px;
+  }
 }

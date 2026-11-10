@@ -4,20 +4,23 @@ import { URL_GRAPHQL } from "../graphql/clienteGraphQL";
 import { consultarRevisionLibros } from "../graphql/servicioLibro";
 import { Boton } from "../componentes/ui/Boton";
 import { Encabezado } from "../componentes/ui/Encabezado";
+import { VERSION } from "../componentes/Navegacion";
 
-const VERSION = "1.0.0";
 
 const INTEGRANTES = ["Misael Gallo Tangarife", "Sara Zambrano", "Santiago Guimel", "Alejandra González"];
 
 const PATRONES = [
-  { nombre: "MVC", donde: "Modelos y servicios de datos, observadores y pantallas en paquetes separados, en los tres proyectos." },
-  { nombre: "Singleton", donde: "Un único ClienteGraphQL en cada cliente y repositorios únicos en el servidor." },
-  { nombre: "Observer", donde: "Las pantallas de Listar y el Inicio se actualizan solas cuando cambian los datos." },
-  { nombre: "Builder", donde: "LibroBuilder y EjemplarBuilder construyen los objetos en el servidor." },
+  { nombre: "MVC", donde: "Modelo (documentos y repositorios de MongoDB), servicios y controllers GraphQL en el servidor; servicios, observadores y pantallas en los clientes." },
+  { nombre: "Singleton", donde: "Un único ClienteGraphQL en cada cliente. Los datos ya no están en listas: están en MongoDB." },
+  { nombre: "Observer", donde: "Las pantallas de Listar y el Inicio se actualizan solas; el servidor cuenta las revisiones de cada colección en MongoDB." },
+  { nombre: "Builder", donde: "Libro.builder() y Ejemplar.builder() (Lombok @Builder) construyen los documentos en el servidor." },
   { nombre: "SOLID", donde: "Una responsabilidad por clase e inyección de dependencias en el servidor." }
 ];
 
-const TECNOLOGIAS = ["Java 17", "Spring Boot", "Spring for GraphQL", "React 18", "TypeScript", "Radix UI", "Flutter", "Dart"];
+const TECNOLOGIAS = [
+  "Java 17", "Spring Boot 4", "Spring for GraphQL", "Spring Data MongoDB", "MongoDB", "React 18", "TypeScript", "Radix UI",
+  "Flutter", "Dart"
+];
 
 const iniciales = (nombre: string) => nombre.split(" ").slice(0, 2).map((parte) => parte[0]).join("");
 
@@ -38,7 +41,7 @@ export default function AcercaDe() {
             <dt>Versión</dt>
             <dd>{VERSION}</dd>
             <dt>Proyecto</dt>
-            <dd>Segundo Proyecto · Diseño de Soluciones · Universidad de Ibagué · 2026B</dd>
+            <dd>Tercer Prototipo · Desarrollo de Aplicaciones Empresariales · Universidad de Ibagué · 2026B</dd>
           </dl>
         </section>
 
@@ -125,15 +128,15 @@ function Diagrama() {
   }, [medir]);
 
   return (
-    <figure className="diagrama" aria-label="Arquitectura: dos clientes se comunican con el servidor GraphQL, que guarda los datos en listas">
+    <figure className="diagrama" aria-label="Arquitectura: dos clientes se comunican con el servidor GraphQL, que guarda los datos en MongoDB">
       <div className="diagrama-fila">
         <Nodo icono={Monitor} titulo="Cliente web" detalle="React · TypeScript" />
         <Nodo icono={Smartphone} titulo="App móvil" detalle="Flutter · Dart" />
       </div>
       <span className="conector">GraphQL sobre HTTP (POST)</span>
       <Nodo icono={Server} titulo="Servidor GraphQL" detalle="Java 17 · Spring Boot · toda la lógica de negocio" />
-      <span className="conector">en memoria</span>
-      <Nodo icono={Database} titulo="Repositorios" detalle="List<Libro> · List<Ejemplar>" />
+      <span className="conector">Spring Data MongoDB</span>
+      <Nodo icono={Database} titulo="MongoDB" detalle="Colecciones libros y ejemplares" />
 
       <figcaption className="estado-servidor" role="status">
         {estado.tipo === "comprobando" && <span>Comprobando el servidor…</span>}

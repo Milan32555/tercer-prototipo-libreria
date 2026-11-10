@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.libreria</groupId>
 	<artifactId>ServidorLibreriaMongo</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>3.0.0</version>
 	<name>ServidorLibreriaMongo</name>
 	<description>Servidor GraphQL de la librería (Libro -> Ejemplar) con Spring Data MongoDB</description>
 	<properties>
