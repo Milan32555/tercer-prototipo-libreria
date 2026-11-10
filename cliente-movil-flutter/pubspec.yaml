@@ -1,0 +1,51 @@
+name: cliente_movil_libreria
+description: Cliente móvil (Flutter) del sistema de gestión de Librería - Segundo Proyecto Diseño de Soluciones
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Textos de Material (selector de fecha, menús) en español.
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.2.2
+  intl: ^0.20.2
+  # Íconos Lucide: la misma familia que usa el cliente web (lucide-react).
+  lucide_icons_flutter: 3.1.21
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # Recorrido en el celular real (integration_test/ y test_driver/).
+  integration_test:
+    sdk: flutter
+  flutter_driver:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  # Fuentes incluidas en la app (no dependen de internet), licencia SIL Open Font License
+  # (ver assets/fuentes/OFL-*.txt). Las mismas del cliente web: IBM Plex Sans para la interfaz
+  # y Literata para los títulos de libros y el logotipo.
+  fonts:
+    - family: IBMPlexSans
+      fonts:
+        - asset: assets/fuentes/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fuentes/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fuentes/IBMPlexSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fuentes/IBMPlexSans-Bold.ttf
+          weight: 700
+    - family: Literata
+      fonts:
+        - asset: assets/fuentes/Literata-Medium.ttf
+          weight: 500
+        - asset: assets/fuentes/Literata-SemiBold.ttf
+          weight: 600

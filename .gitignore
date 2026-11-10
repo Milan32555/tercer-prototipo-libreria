@@ -1,0 +1,41 @@
+# Java / Maven
+target/
+*.class
+.idea/
+*.iml
+
+# Node / React
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Resultados de pruebas (cobertura, Playwright)
+coverage/
+test-results/
+playwright-report/
+
+# Flutter / Dart
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+# (pubspec.lock SÍ se versiona: es una aplicación, no una librería)
+
+# Variables de entorno locales
+.env
+.env.local
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Logs del servidor
+logs/
+
+# Archivos locales de trabajo
+.mvn-offline.log
+.servidor-run.log
