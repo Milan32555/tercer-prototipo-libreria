@@ -128,6 +128,31 @@ class _MenuPrincipalState extends State<MenuPrincipal> {
                 ],
               ),
             ),
+            const SizedBox(height: Espacio.e3),
+            Panel(
+              padding: const EdgeInsets.all(Espacio.e3),
+              child: Semantics(
+                container: true,
+                label: 'Valor del inventario',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Valor del inventario', style: textos.labelMedium!.copyWith(color: kGris600)),
+                    Text(
+                      _resumen == null ? '—' : formatearPrecio(_resumen!.valorInventario),
+                      style: textos.headlineSmall!.copyWith(fontFeatures: cifrasTabulares),
+                    ),
+                    Text(
+                      _resumen == null
+                          ? 'Suma del precio de reposición'
+                          : 'Calculado en ${_resumen!.duracionMs} ms por 3 tareas en paralelo en el servidor '
+                                '(${_resumen!.tareas.map((t) => t.hilo).join(', ')})',
+                      style: textos.bodySmall!.copyWith(color: kGris500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: Espacio.e4),
             _EstadoEjemplares(conteos: _resumen?.ejemplaresPorEstado, total: _resumen?.totalEjemplares),
             const SizedBox(height: Espacio.e6),
@@ -256,6 +281,7 @@ class _EstadoEjemplares extends StatelessWidget {
 const _accesos = [
   (ruta: 'listar', texto: 'Listar', icono: LucideIcons.list),
   (ruta: 'consultar', texto: 'Consultar', icono: LucideIcons.search),
+  (ruta: 'detalle', texto: 'Detalle del', icono: LucideIcons.bookOpenText),
   (ruta: 'agregar', texto: 'Adicionar', icono: LucideIcons.plus),
   (ruta: 'actualizar', texto: 'Actualizar', icono: LucideIcons.pencil),
   (ruta: 'eliminar', texto: 'Eliminar', icono: LucideIcons.trash2),
@@ -279,7 +305,7 @@ class _Accesos extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(Espacio.e4, Espacio.e3, Espacio.e4, Espacio.e1),
             child: Text(titulo, style: Theme.of(context).textTheme.labelSmall!.copyWith(fontWeight: FontWeight.w600)),
           ),
-          for (final a in _accesos)
+          for (final a in _accesos.where((a) => a.ruta != 'detalle' || base == '/libros'))
             ListTile(
               dense: true,
               leading: Icon(a.icono, size: 18),

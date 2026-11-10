@@ -10,17 +10,35 @@ import '../../utilidades/formato.dart';
 import '../comunes/componentes.dart';
 import '../comunes/tabla_datos.dart';
 
+const _tamanioPagina = 10;
+const _gris = TextStyle(color: kGris600);
+
+/// TODOS los atributos del ejemplar + título y autor de su libro (colección A).
 final _columnas = <ColumnaTabla<Ejemplar>>[
-  ColumnaTabla(titulo: 'Código', ancho: 124, celda: (e) => CeldaDoble(principal: e.codigo, secundario: e.ubicacion)),
+  ColumnaTabla(titulo: 'Código', ancho: 104, celda: (e) => Text(e.codigo, style: const TextStyle(fontWeight: FontWeight.w600))),
+  ColumnaTabla(titulo: 'Título del libro', ancho: 176, celda: (e) => Text(
+    e.tituloLibro ?? '—',
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: const TextStyle(fontFamily: fuenteLibro, fontSize: 15, fontWeight: FontWeight.w500, color: kGris900),
+  )),
+  ColumnaTabla(titulo: 'Autor del libro', ancho: 168, celda: (e) => Text(e.autorLibro ?? '—')),
+  ColumnaTabla(titulo: 'ISBN del libro', ancho: 150, celda: (e) => Text(e.isbnLibro, style: _gris)),
   ColumnaTabla(titulo: 'Estado', ancho: 136, celda: (e) => InsigniaEstado(e.estado)),
-  ColumnaTabla(titulo: 'Libro (ISBN)', ancho: 164, celda: (e) => Text(e.isbnLibro, style: const TextStyle(color: kGris600))),
-  ColumnaTabla(titulo: 'Ingreso', ancho: 112, celda: (e) => Text(formatearFechaCortaIso(e.fechaIngreso), style: const TextStyle(color: kGris600))),
+  ColumnaTabla(titulo: 'Ubicación', ancho: 116, celda: (e) => Text(e.ubicacion)),
+  ColumnaTabla(titulo: 'Fecha de ingreso', ancho: 150, celda: (e) => Text(formatearFechaIso(e.fechaIngreso), style: _gris)),
   ColumnaTabla(titulo: 'Préstamos', ancho: 96, numerica: true, celda: (e) => Text('${e.numeroPrestamos}')),
   ColumnaTabla(titulo: 'Reposición', ancho: 112, numerica: true, celda: (e) => Text(formatearPrecio(e.precioReposicion))),
+  ColumnaTabla(titulo: 'Observaciones', ancho: 180, celda: (e) => Text(e.observaciones ?? '—', style: _gris, overflow: TextOverflow.ellipsis)),
+  ColumnaTabla(titulo: 'Versión', ancho: 80, numerica: true, celda: (e) => Text('${e.version ?? '—'}')),
+  ColumnaTabla(titulo: 'ID (_id)', ancho: 210, celda: (e) => Text(e.id ?? '', style: const TextStyle(fontSize: 12, color: kGris600))),
+  ColumnaTabla(titulo: 'ID del libro (libroId)', ancho: 210, celda: (e) => Text(e.libroId ?? '', style: const TextStyle(fontSize: 12, color: kGris600))),
 ];
 
-/// Caso de uso: Listar Ejemplares en una grilla con filtro por estado y/o ISBN del libro. El
-/// filtro y el total los resuelve el servidor. Observer igual que en Listar Libros.
+/// Caso de uso: Listar Ejemplares. Usa la consulta personalizada ejemplaresConLibro ($lookup en
+/// MongoDB): cada fila trae TODOS los atributos del ejemplar más el título y el autor de su
+/// libro. Filtro por estado y/o ISBN del libro y paginación en el servidor. Observer igual que
+/// en Listar Libros.
 class ListarEjemplares extends StatefulWidget {
   const ListarEjemplares({super.key});
 
@@ -33,6 +51,8 @@ class _ListarEjemplaresState extends State<ListarEjemplares> {
   String? _estado;
   List<Ejemplar> _ejemplares = [];
   int _total = 0;
+  int _pagina = 0;
+  int _totalPaginas = 0;
   bool _cargando = true;
   bool _cargado = false;
   String? _error;
@@ -57,11 +77,26 @@ class _ListarEjemplaresState extends State<ListarEjemplares> {
       _error = null;
     });
     try {
-      final resultado = await listarEjemplaresFiltrados(estado: _estado, isbnLibro: _isbnLibro.text);
+      var resultado = await listarEjemplaresConLibro(
+        pagina: _pagina,
+        tamanio: _tamanioPagina,
+        estado: _estado,
+        isbn: _isbnLibro.text,
+      );
+      if (resultado.contenido.isEmpty && _pagina > 0 && resultado.totalPaginas > 0) {
+        _pagina = resultado.totalPaginas - 1;
+        resultado = await listarEjemplaresConLibro(
+          pagina: _pagina,
+          tamanio: _tamanioPagina,
+          estado: _estado,
+          isbn: _isbnLibro.text,
+        );
+      }
       if (mounted) {
         setState(() {
-          _ejemplares = resultado.ejemplares;
-          _total = resultado.total;
+          _ejemplares = resultado.contenido;
+          _total = resultado.totalElementos;
+          _totalPaginas = resultado.totalPaginas;
         });
       }
     } on ErrorGraphQL catch (e) {
@@ -78,12 +113,19 @@ class _ListarEjemplaresState extends State<ListarEjemplares> {
 
   void _filtrar() {
     FocusManager.instance.primaryFocus?.unfocus();
+    _pagina = 0;
     _cargar();
   }
 
   void _limpiar() {
     _isbnLibro.clear();
     setState(() => _estado = null);
+    _pagina = 0;
+    _cargar();
+  }
+
+  void _irAPagina(int pagina) {
+    _pagina = pagina;
     _cargar();
   }
 
@@ -151,10 +193,18 @@ class _ListarEjemplaresState extends State<ListarEjemplares> {
             ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(Espacio.e4, Espacio.e2, Espacio.e4, 88),
-              child: _ejemplares.isEmpty
-                  ? (_cargado && _error == null ? _vacio() : const SizedBox.shrink())
-                  : TablaDatos<Ejemplar>(etiqueta: 'Ejemplares del inventario', columnas: _columnas, filas: _ejemplares),
+              padding: const EdgeInsets.fromLTRB(Espacio.e4, Espacio.e2, Espacio.e4, 80),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _ejemplares.isEmpty
+                        ? (_cargado && _error == null ? _vacio() : const SizedBox.shrink())
+                        : TablaDatos<Ejemplar>(etiqueta: 'Ejemplares del inventario', columnas: _columnas, filas: _ejemplares),
+                  ),
+                  Paginador(pagina: _pagina, totalPaginas: _totalPaginas, alCambiar: _irAPagina, ocupado: _cargando),
+                ],
+              ),
             ),
           ),
         ],

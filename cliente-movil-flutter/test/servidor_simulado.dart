@@ -95,6 +95,7 @@ class ServidorSimulado {
 }
 
 Map<String, dynamic> libroJson({
+  String id = '6af377e075da53cd0c59caa1',
   String isbn = '978-8420401751',
   String titulo = 'Delirio',
   String autor = 'Laura Restrepo',
@@ -102,7 +103,12 @@ Map<String, dynamic> libroJson({
   int numeroPaginas = 352,
   String fechaPublicacion = '2004-03-01T10:30:00',
   String genero = 'FICCION',
+  String? editorial = 'Alfaguara',
+  String? sinopsis,
+  int version = 2,
+  int? cantidadEjemplares,
 }) => {
+  'id': id,
   'isbn': isbn,
   'titulo': titulo,
   'autor': autor,
@@ -110,6 +116,10 @@ Map<String, dynamic> libroJson({
   'numeroPaginas': numeroPaginas,
   'fechaPublicacion': fechaPublicacion,
   'genero': genero,
+  'editorial': editorial,
+  'sinopsis': sinopsis,
+  'version': version,
+  'cantidadEjemplares': ?cantidadEjemplares,
 };
 
 Map<String, dynamic> ejemplarJson({
@@ -120,14 +130,42 @@ Map<String, dynamic> ejemplarJson({
   num precioReposicion = 65000,
   int numeroPrestamos = 4,
   String isbnLibro = '978-0307474728',
+  String? observaciones,
+  int version = 0,
 }) => {
+  'id': '6af377e075da53cd0c59cab0',
   'codigo': codigo,
+  'libroId': '6af377e075da53cd0c59ca9f',
+  'isbnLibro': isbnLibro,
   'estado': estado,
   'ubicacion': ubicacion,
   'fechaIngreso': fechaIngreso,
   'precioReposicion': precioReposicion,
   'numeroPrestamos': numeroPrestamos,
-  'isbnLibro': isbnLibro,
+  'observaciones': observaciones,
+  'version': version,
+  'libro': {'titulo': 'Cien años de soledad', 'autor': 'Gabriel García Márquez'},
+};
+
+/// Fila de ejemplaresConLibro ($lookup): atributos del ejemplar + isbn, título y autor del libro.
+Map<String, dynamic> ejemplarConLibroJson({
+  String codigo = 'EJ-001',
+  String estado = 'DISPONIBLE',
+  int numeroPrestamos = 4,
+  String? observaciones,
+}) {
+  final fila = ejemplarJson(codigo: codigo, estado: estado, numeroPrestamos: numeroPrestamos, observaciones: observaciones)
+    ..remove('libro');
+  return {...fila, 'tituloLibro': 'Cien años de soledad', 'autorLibro': 'Gabriel García Márquez'};
+}
+
+/// Una página de resultados como la devuelve el servidor.
+Map<String, dynamic> paginaJson(List<Map<String, dynamic>> contenido, {int pagina = 0, int? total, int totalPaginas = 1}) => {
+  'contenido': contenido,
+  'pagina': pagina,
+  'tamanio': 10,
+  'totalElementos': total ?? contenido.length,
+  'totalPaginas': totalPaginas,
 };
 
 /// Resumen del inventario tal como lo calcula el servidor (query resumenInventario).
@@ -142,6 +180,13 @@ Map<String, dynamic> resumenJson({
     'ejemplaresPorEstado': [
       for (final MapEntry(key: estado, value: cantidad) in porEstado.entries)
         {'estado': estado, 'cantidad': cantidad, 'porcentaje': total == 0 ? 0 : cantidad * 100 / total},
+    ],
+    'valorInventario': 1162000,
+    'duracionMs': 12,
+    'tareas': [
+      {'nombre': 'contar-libros', 'hilo': 'tarea-1', 'duracionMs': 3, 'exitosa': true},
+      {'nombre': 'contar-ejemplares-por-estado', 'hilo': 'tarea-2', 'duracionMs': 9, 'exitosa': true},
+      {'nombre': 'valor-total-inventario', 'hilo': 'tarea-3', 'duracionMs': 7, 'exitosa': true},
     ],
   };
 }

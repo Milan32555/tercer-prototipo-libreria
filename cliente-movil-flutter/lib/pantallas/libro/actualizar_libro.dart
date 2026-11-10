@@ -28,6 +28,8 @@ class _ActualizarLibroState extends State<ActualizarLibro> {
   final _autor = TextEditingController();
   final _precio = TextEditingController();
   final _numeroPaginas = TextEditingController();
+  final _editorial = TextEditingController();
+  final _sinopsis = TextEditingController();
   DateTime? _fechaPublicacion;
   String _genero = generos.first;
 
@@ -39,7 +41,7 @@ class _ActualizarLibroState extends State<ActualizarLibro> {
 
   @override
   void dispose() {
-    for (final c in [_isbnBusqueda, _titulo, _autor, _precio, _numeroPaginas]) {
+    for (final c in [_isbnBusqueda, _titulo, _autor, _precio, _numeroPaginas, _editorial, _sinopsis]) {
       c.dispose();
     }
     super.dispose();
@@ -70,6 +72,8 @@ class _ActualizarLibroState extends State<ActualizarLibro> {
         _numeroPaginas.text = '${resultado.numeroPaginas}';
         _fechaPublicacion = DateTime.parse(resultado.fechaPublicacion);
         _genero = resultado.genero;
+        _editorial.text = resultado.editorial ?? '';
+        _sinopsis.text = resultado.sinopsis ?? '';
       });
     } on ErrorGraphQL catch (e) {
       if (mounted) setState(() => _error = e.mensaje);
@@ -81,6 +85,10 @@ class _ActualizarLibroState extends State<ActualizarLibro> {
   Future<void> _guardarCambios() async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (_libro == null || !_formKey.currentState!.validate()) return;
+    if (validarFechaNoFutura(_fechaPublicacion) != null) {
+      setState(() => _error = validarFechaNoFutura(_fechaPublicacion));
+      return;
+    }
     setState(() {
       _cargando = true;
       _error = null;
@@ -94,6 +102,9 @@ class _ActualizarLibroState extends State<ActualizarLibro> {
         numeroPaginas: int.parse(_numeroPaginas.text.trim()),
         fechaPublicacion: aFechaServidor(_fechaPublicacion!),
         genero: _genero,
+        editorial: textoONulo(_editorial.text),
+        sinopsis: textoONulo(_sinopsis.text),
+        version: _libro!.version, // concurrencia optimista: la versión que se leyó al buscar
       );
       libroObservable.notificar();
       if (!mounted) return;
@@ -207,6 +218,21 @@ class _ActualizarLibroState extends State<ActualizarLibro> {
           icon: const Icon(LucideIcons.chevronDown, size: 18),
           items: [for (final g in generos) DropdownMenuItem(value: g, child: Text(etiquetaGenero(g)))],
           onChanged: (g) => setState(() => _genero = g!),
+        ),
+        TextFormField(
+          controller: _editorial,
+          decoration: const InputDecoration(labelText: 'Editorial (opcional)'),
+          textCapitalization: TextCapitalization.words,
+          validator: validarLargoMaximo(120),
+        ),
+        TextFormField(
+          controller: _sinopsis,
+          decoration: const InputDecoration(labelText: 'Sinopsis (opcional)', alignLabelWithHint: true),
+          minLines: 3,
+          maxLines: 6,
+          maxLength: 500,
+          textCapitalization: TextCapitalization.sentences,
+          validator: validarLargoMaximo(500),
         ),
       ],
     ),

@@ -79,6 +79,8 @@ void main() {
       expect(find.text('50 %'), findsOneWidget);
       expect(find.text('15 %'), findsOneWidget);
       expect(find.text('20 copias · calculado por el servidor'), findsOneWidget);
+      expect(find.text('\$ 1.162.000'), findsOneWidget); // valor del inventario
+      expect(find.textContaining('3 tareas en paralelo en el servidor (tarea-1, tarea-2, tarea-3)'), findsOneWidget);
     });
 
     testWidgets('avisa si no hay conexión y permite reintentar', (tester) async {
@@ -112,11 +114,12 @@ void main() {
       for (final opcion in ['Listar', 'Consultar', 'Adicionar', 'Actualizar', 'Eliminar']) {
         expect(find.descendant(of: menu, matching: find.text(opcion)), findsNWidgets(2));
       }
+      expect(find.descendant(of: menu, matching: find.text('Detalle')), findsOneWidget);
 
       await tocar(tester, find.descendant(of: menu, matching: find.text('Acerca de...')));
 
       expect(find.text('Acerca de'), findsOneWidget);
-      expect(find.text('1.0.0'), findsOneWidget);
+      expect(find.text('3.0.0'), findsOneWidget);
       for (final integrante in ['Misael Gallo Tangarife', 'Sara Zambrano', 'Santiago Guimel', 'Alejandra González']) {
         expect(find.text(integrante), findsOneWidget);
       }
@@ -158,10 +161,10 @@ void main() {
   });
 
   group('Listar Libros', () {
-    testWidgets('muestra los libros en una grilla y filtra en el servidor', (tester) async {
+    testWidgets('muestra los libros en una grilla paginada y filtra en el servidor', (tester) async {
       final servidor = ServidorSimulado({
-        'librosFiltrados': (_) => [libroJson()],
-        'totalLibrosFiltrados': (_) => 1,
+        'libros': (_) => paginaJson([libroJson(cantidadEjemplares: 0)]),
+        'librosPorPrecioYGenero': (_) => paginaJson([libroJson()]),
         'revisionLibros': (_) => 1,
       })..instalar();
       await abrir(tester, '/libros/listar');
@@ -169,24 +172,49 @@ void main() {
       expect(find.byType(TablaDatos<Libro>), findsOneWidget);
       expect(find.text('Delirio'), findsOneWidget);
       expect(find.text('Laura Restrepo'), findsOneWidget);
+      expect(find.text('Alfaguara'), findsOneWidget);
       expect(find.text('Páginas'), findsOneWidget);
       expect(find.text('352'), findsOneWidget);
       expect(find.text('1 libro'), findsOneWidget);
-      expect(find.text('Total calculado por el servidor'), findsOneWidget);
+      expect(find.text('Página 1 de 1'), findsOneWidget);
+      expect(servidor.variablesDe('libros').single, {'pagina': 0, 'tamanio': 10});
 
-      await tester.enterText(campoDeBusqueda(), 'restrepo');
+      await escribir(tester, 'Precio mínimo', '40000');
+      await escribir(tester, 'Precio máximo', '60000');
       await tocar(tester, find.byTooltip('Filtrar'));
-      expect(servidor.variablesDe('librosFiltrados').last, {'autor': 'restrepo', 'genero': null});
+      expect(servidor.variablesDe('librosPorPrecioYGenero').last,
+          {'min': 40000.0, 'max': 60000.0, 'genero': null, 'pagina': 0, 'tamanio': 10});
 
       await tocar(tester, find.widgetWithText(ChoiceChip, 'Poesía'));
-      expect(servidor.variablesDe('librosFiltrados').last, {'autor': 'restrepo', 'genero': 'POESIA'});
+      expect(servidor.variablesDe('librosPorPrecioYGenero').last,
+          {'min': 40000.0, 'max': 60000.0, 'genero': 'POESIA', 'pagina': 0, 'tamanio': 10});
+    });
+
+    testWidgets('no envía un rango de precios al revés y pasa de página en el servidor', (tester) async {
+      final servidor = ServidorSimulado({
+        'libros': (v) => paginaJson([libroJson(titulo: 'Página ${v['pagina']}')], pagina: v['pagina'] as int, total: 25, totalPaginas: 3),
+        'revisionLibros': (_) => 1,
+      })..instalar();
+      await abrir(tester, '/libros/listar');
+
+      await escribir(tester, 'Precio mínimo', '90000');
+      await escribir(tester, 'Precio máximo', '10000');
+      await tocar(tester, find.byTooltip('Filtrar'));
+      expect(find.text('El precio mínimo no puede ser mayor que el máximo.'), findsOneWidget);
+      expect(servidor.variablesDe('librosPorPrecioYGenero'), isEmpty);
+
+      await tocar(tester, find.byTooltip('Limpiar filtros'));
+      await tocar(tester, find.byTooltip('Página siguiente'));
+      expect(servidor.variablesDe('libros').last, {'pagina': 1, 'tamanio': 10});
+      expect(find.text('Página 2 de 3'), findsOneWidget);
+      expect(find.text('Página 1'), findsOneWidget);
+      expect(find.text('25 libros'), findsOneWidget);
     });
 
     testWidgets('Observer: se refresca sola cuando el sujeto notifica un cambio', (tester) async {
       var libros = [libroJson()];
       ServidorSimulado({
-        'librosFiltrados': (_) => libros,
-        'totalLibrosFiltrados': (_) => libros.length, // en el servidor real lo cuenta el servidor
+        'libros': (_) => paginaJson(libros), // en el servidor real el total lo cuenta MongoDB
         'revisionLibros': (_) => 1,
       }).instalar();
       await abrir(tester, '/libros/listar');
@@ -203,18 +231,18 @@ void main() {
     testWidgets('estado vacío con filtro, limpiar filtros y error con reintento', (tester) async {
       var fallar = false;
       final servidor = ServidorSimulado({
-        'librosFiltrados': (v) => fallar ? throw ErrorSimulado('No se pudo conectar con el servidor.') : (v['autor'] == null ? [libroJson()] : []),
-        'totalLibrosFiltrados': (v) => v['autor'] == null ? 1 : 0,
+        'libros': (_) => fallar ? throw ErrorSimulado('No se pudo conectar con el servidor.') : paginaJson([libroJson()]),
+        'librosPorPrecioYGenero': (_) => paginaJson([], totalPaginas: 0),
         'revisionLibros': (_) => 1,
       })..instalar();
       await abrir(tester, '/libros/listar');
 
-      await tester.enterText(campoDeBusqueda(), 'nadie');
+      await escribir(tester, 'Precio mínimo', '999999');
       await tocar(tester, find.byTooltip('Filtrar'));
       expect(find.text('Ningún libro coincide con el filtro'), findsOneWidget);
 
       await tocar(tester, find.widgetWithText(OutlinedButton, 'Limpiar filtros'));
-      expect(servidor.variablesDe('librosFiltrados').last, {'autor': null, 'genero': null});
+      expect(servidor.variablesDe('libros').last, {'pagina': 0, 'tamanio': 10});
       expect(find.text('Delirio'), findsOneWidget);
 
       fallar = true;
@@ -319,6 +347,7 @@ void main() {
       await escribir(tester, 'Autor', 'Juan Rulfo');
       await escribir(tester, 'Precio', '42000.5');
       await escribir(tester, 'Número de páginas', '129');
+      await escribir(tester, 'Editorial (opcional)', ' Fondo de Cultura Económica ');
       await elegir(tester, 'Género', 'No ficción');
       await elegirFechaYHora(tester, hora: '14', minuto: '30');
       expect(find.textContaining(' 14:30'), findsOneWidget); // el campo muestra fecha y hora
@@ -330,6 +359,8 @@ void main() {
       expect(input['precio'], 42000.5);
       expect(input['numeroPaginas'], 129);
       expect(input['genero'], 'NO_FICCION');
+      expect(input['editorial'], 'Fondo de Cultura Económica');
+      expect(input['sinopsis'], isNull);
       expect(
         input['fechaPublicacion'],
         '${hoy.year}-${'${hoy.month}'.padLeft(2, '0')}-${'${hoy.day}'.padLeft(2, '0')}T14:30:00',
@@ -338,10 +369,14 @@ void main() {
     });
 
     testWidgets('muestra el rechazo del servidor', (tester) async {
-      ServidorSimulado({'crearLibro': (_) => throw ErrorSimulado('Ya existe un libro con el ISBN 978-1.')}).instalar();
+      ServidorSimulado({'crearLibro': (_) => throw ErrorSimulado('Ya existe un libro con el ISBN 978-8437624747.')}).instalar();
       await abrir(tester, '/libros/agregar');
 
       await escribir(tester, 'ISBN', '978-1');
+      await tocar(tester, find.widgetWithText(FilledButton, 'Adicionar libro'));
+      expect(find.text('El ISBN debe tener 10 o 13 dígitos (se permiten guiones).'), findsOneWidget);
+
+      await escribir(tester, 'ISBN', '978-8437624747');
       await escribir(tester, 'Título', 'Rayuela');
       await escribir(tester, 'Autor', 'Julio Cortázar');
       await escribir(tester, 'Precio', '89000');
@@ -350,7 +385,7 @@ void main() {
       await tocar(tester, find.widgetWithText(FilledButton, 'Adicionar libro'));
 
       expect(find.text('No se pudo adicionar el libro'), findsOneWidget);
-      expect(find.text('Ya existe un libro con el ISBN 978-1.'), findsOneWidget);
+      expect(find.text('Ya existe un libro con el ISBN 978-8437624747.'), findsOneWidget);
     });
   });
 
@@ -410,10 +445,73 @@ void main() {
           'numeroPaginas': 352,
           'fechaPublicacion': '2004-03-01T10:30:00',
           'genero': 'FICCION',
+          'editorial': 'Alfaguara',
+          'sinopsis': null,
+          'version': 2, // la versión que se leyó al buscar (concurrencia optimista)
         },
       });
       expect(find.text('Datos guardados'), findsOneWidget);
       expect(find.text('\$ 57.000'), findsOneWidget);
+    });
+
+    testWidgets('muestra tal cual el conflicto de versión del servidor', (tester) async {
+      ServidorSimulado({
+        'libroPorIsbn': (_) => libroJson(),
+        'actualizarLibro': (_) => throw ErrorSimulado('Otro usuario modificó este libro; vuelva a buscarlo.'),
+      }).instalar();
+      await abrir(tester, '/libros/actualizar');
+
+      await escribir(tester, 'ISBN del libro', '978-8420401751');
+      await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
+      await tocar(tester, find.widgetWithText(FilledButton, 'Guardar cambios'));
+
+      expect(find.text('No se pudieron guardar los cambios'), findsOneWidget);
+      expect(find.text('Otro usuario modificó este libro; vuelva a buscarlo.'), findsOneWidget);
+    });
+  });
+
+  group('Detalle del libro (maestro + detalle)', () {
+    testWidgets('muestra el libro, el resumen del servidor y la grilla de sus ejemplares', (tester) async {
+      final servidor = ServidorSimulado({
+        'detalleLibro': (_) => {
+          'libro': libroJson(sinopsis: 'Una mujer pierde la razón en Bogotá.'),
+          // Estados de texto corto: la fuente de pruebas de Flutter dibuja cada letra más ancha que la real.
+          'ejemplares': [ejemplarJson(estado: 'DANIADO'), ejemplarJson(codigo: 'EJ-002', estado: 'DANIADO', observaciones: 'Firmado')],
+          'conteoPorEstado': [
+            {'estado': 'DISPONIBLE', 'cantidad': 1, 'porcentaje': 50},
+            {'estado': 'PRESTADO', 'cantidad': 1, 'porcentaje': 50},
+            {'estado': 'DANIADO', 'cantidad': 0, 'porcentaje': 0},
+            {'estado': 'DADO_DE_BAJA', 'cantidad': 0, 'porcentaje': 0},
+          ],
+          'totalEjemplares': 2,
+          'totalPrestamos': 8,
+          'valorReposicion': 130000,
+        },
+      })..instalar();
+      await abrir(tester, '/libros/detalle');
+
+      await escribir(tester, 'ISBN del libro', '978-8420401751');
+      await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
+
+      expect(servidor.variablesDe('detalleLibro').single, {'isbn': '978-8420401751'});
+      expect(find.text('Maestro: libro'), findsOneWidget);
+      expect(find.text('Una mujer pierde la razón en Bogotá.'), findsOneWidget);
+      expect(find.text('8'), findsOneWidget);
+      expect(find.text('\$ 130.000'), findsOneWidget);
+      expect(find.text('1 · 50 %'), findsNWidgets(2));
+      expect(find.text('Detalle: 2 ejemplares'), findsOneWidget);
+      expect(find.byType(TablaDatos<Ejemplar>), findsOneWidget);
+      expect(find.text('Firmado'), findsOneWidget);
+    });
+
+    testWidgets('informa si el libro no existe', (tester) async {
+      ServidorSimulado({'detalleLibro': (_) => null}).instalar();
+      await abrir(tester, '/libros/detalle');
+
+      await escribir(tester, 'ISBN del libro', '000');
+      await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
+
+      expect(find.text('No hay ningún libro con el ISBN «000».'), findsOneWidget);
     });
   });
 
@@ -438,12 +536,22 @@ void main() {
       expect(find.text('Lo calcula el servidor: suma 1 cada vez que el ejemplar pasa a Prestado.'), findsOneWidget);
 
       await escribir(tester, 'Ubicación', 'Mostrador');
+      await escribir(tester, 'Observaciones (opcional)', 'Prestado a Sara');
       await elegir(tester, 'Estado', 'Prestado');
       await tocar(tester, find.widgetWithText(FilledButton, 'Guardar cambios'));
 
       expect(servidor.variablesDe('actualizarEjemplar').single, {
-        'codigo': 'EJ-001',
-        'input': {'estado': 'PRESTADO', 'ubicacion': 'Mostrador', 'fechaIngreso': '2024-02-10T09:00:00', 'precioReposicion': 65000.0},
+        'input': {
+          'codigo': 'EJ-001',
+          'isbnLibro': '978-0307474728',
+          'estado': 'PRESTADO',
+          'ubicacion': 'Mostrador',
+          'fechaIngreso': '2024-02-10T09:00:00',
+          'precioReposicion': 65000.0,
+          'numeroPrestamos': null, // lo lleva el servidor
+          'observaciones': 'Prestado a Sara',
+          'version': 0,
+        },
       });
       expect(find.text('Datos guardados'), findsOneWidget);
       expect(find.text('5'), findsOneWidget); // préstamos que calculó el servidor
@@ -454,7 +562,8 @@ void main() {
   group('Adicionar Ejemplar', () {
     testWidgets('envía el número de préstamos y valida que no sea negativo', (tester) async {
       final servidor = ServidorSimulado({
-        'crearEjemplar': (v) => v['input'],
+        'crearEjemplar': (v) => {...ejemplarJson(), ...(v['input'] as Map<String, dynamic>)},
+        'libroPorIsbn': (_) => libroJson(isbn: '978-0307474728', titulo: 'Cien años de soledad', autor: 'Gabriel García Márquez'),
         'resumenInventario': (_) => resumenJson(),
         'revisionLibros': (_) => 1,
         'revisionEjemplares': (_) => 1,
@@ -463,6 +572,10 @@ void main() {
 
       await escribir(tester, 'Código del ejemplar', 'EJ-100');
       await escribir(tester, 'ISBN del libro', '978-0307474728');
+      // El libro se elige por su ISBN: se busca en el servidor y se muestra su título.
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.text('Cien años de soledad · Gabriel García Márquez'), findsOneWidget);
       await escribir(tester, 'Ubicación', 'Estante C3');
       await escribir(tester, 'Precio de reposición', '45000');
       await escribir(tester, 'Número de préstamos', '-2');
@@ -481,6 +594,8 @@ void main() {
       expect(input['estado'], 'PRESTADO');
       expect(input['precioReposicion'], 45000.0);
       expect(input['numeroPrestamos'], 3);
+      expect(input['isbnLibro'], '978-0307474728');
+      expect(input['observaciones'], isNull);
       expect(find.text('Ejemplar adicionado: EJ-100.'), findsOneWidget);
     });
   });
@@ -488,25 +603,35 @@ void main() {
   group('Listar Ejemplares', () {
     testWidgets('muestra el estado con punto y texto y filtra por estado', (tester) async {
       final servidor = ServidorSimulado({
-        'ejemplaresFiltrados': (_) => [ejemplarJson(estado: 'DANIADO', numeroPrestamos: 9)],
-        'totalEjemplaresFiltrados': (_) => 1,
+        'ejemplaresConLibro': (_) => paginaJson([
+          ejemplarConLibroJson(estado: 'DANIADO', numeroPrestamos: 9, observaciones: 'Lomo despegado'),
+        ]),
         'revisionEjemplares': (_) => 1,
       })..instalar();
       await abrir(tester, '/ejemplares/listar');
 
       expect(find.byType(TablaDatos<Ejemplar>), findsOneWidget);
       expect(find.text('EJ-001'), findsOneWidget);
+      // Todos los atributos del ejemplar + título y autor del libro.
+      for (final columna in ['Título del libro', 'Autor del libro', 'Ubicación', 'Observaciones', 'Versión', 'ID (_id)']) {
+        expect(find.text(columna), findsOneWidget);
+      }
+      expect(find.text('Cien años de soledad'), findsOneWidget);
+      expect(find.text('Gabriel García Márquez'), findsOneWidget);
+      expect(find.text('Lomo despegado'), findsOneWidget);
+      expect(find.text('6af377e075da53cd0c59ca9f'), findsOneWidget);
       expect(find.text('Préstamos'), findsOneWidget);
       expect(find.text('9'), findsOneWidget);
       expect(find.text('Dañado'), findsNWidgets(2)); // chip del filtro + insignia de la fila
       expect(find.text('1 ejemplar'), findsOneWidget);
 
       await tocar(tester, find.widgetWithText(ChoiceChip, 'Prestado'));
-      expect(servidor.variablesDe('ejemplaresFiltrados').last, {'estado': 'PRESTADO', 'isbnLibro': null});
+      expect(servidor.variablesDe('ejemplaresConLibro').last, {'estado': 'PRESTADO', 'isbn': null, 'pagina': 0, 'tamanio': 10});
 
       await tester.enterText(campoDeBusqueda(), '978-0307474728');
       await tocar(tester, find.byTooltip('Filtrar'));
-      expect(servidor.variablesDe('ejemplaresFiltrados').last, {'estado': 'PRESTADO', 'isbnLibro': '978-0307474728'});
+      expect(servidor.variablesDe('ejemplaresConLibro').last,
+          {'estado': 'PRESTADO', 'isbn': '978-0307474728', 'pagina': 0, 'tamanio': 10});
     });
   });
 
@@ -522,6 +647,26 @@ void main() {
       expect(find.text('Dañado'), findsNWidgets(2)); // cabecera + dato "Estado"
       expect(find.text('10/02/2024 09:00'), findsOneWidget);
       expect(find.text('Lo calcula el servidor'), findsOneWidget);
+      expect(find.text('Gabriel García Márquez'), findsOneWidget); // autor del libro
+    });
+
+    testWidgets('segundo criterio: ISBN del libro + ubicación (muestra todas las copias)', (tester) async {
+      final servidor = ServidorSimulado({
+        'ejemplaresPorLibroYUbicacion': (_) => [ejemplarJson(), ejemplarJson(codigo: 'EJ-004', estado: 'PRESTADO')],
+      })..instalar();
+      await abrir(tester, '/ejemplares/consultar');
+
+      await tocar(tester, find.text('Por libro y ubicación'));
+      await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
+      expect(find.text('Este campo es obligatorio.'), findsNWidgets(2));
+
+      await escribir(tester, 'ISBN del libro', '978-0307474728');
+      await escribir(tester, 'Ubicación', 'estante a1');
+      await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
+
+      expect(servidor.variablesDe('ejemplaresPorLibroYUbicacion').single, {'isbn': '978-0307474728', 'ubicacion': 'estante a1'});
+      expect(find.text('2 ejemplares de ese libro en esa ubicación'), findsOneWidget);
+      expect(find.text('EJ-004'), findsNWidgets(2)); // cabecera + dato "Código"
     });
 
     testWidgets('elimina el ejemplar solo después de confirmar', (tester) async {

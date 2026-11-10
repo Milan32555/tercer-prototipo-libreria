@@ -26,6 +26,8 @@ class _AgregarLibroState extends State<AgregarLibro> {
   final _autor = TextEditingController();
   final _precio = TextEditingController();
   final _numeroPaginas = TextEditingController();
+  final _editorial = TextEditingController();
+  final _sinopsis = TextEditingController();
   DateTime? _fechaPublicacion;
   String _genero = generos.first;
 
@@ -35,7 +37,7 @@ class _AgregarLibroState extends State<AgregarLibro> {
 
   @override
   void dispose() {
-    for (final c in [_isbn, _titulo, _autor, _precio, _numeroPaginas]) {
+    for (final c in [_isbn, _titulo, _autor, _precio, _numeroPaginas, _editorial, _sinopsis]) {
       c.dispose();
     }
     super.dispose();
@@ -45,7 +47,7 @@ class _AgregarLibroState extends State<AgregarLibro> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _intentado = true);
     final valido = _formKey.currentState!.validate();
-    if (!valido || validarFecha(_fechaPublicacion) != null) return;
+    if (!valido || validarFechaNoFutura(_fechaPublicacion) != null) return;
 
     setState(() {
       _enviando = true;
@@ -60,6 +62,8 @@ class _AgregarLibroState extends State<AgregarLibro> {
         numeroPaginas: int.parse(_numeroPaginas.text.trim()),
         fechaPublicacion: aFechaServidor(_fechaPublicacion!),
         genero: _genero,
+        editorial: textoONulo(_editorial.text),
+        sinopsis: textoONulo(_sinopsis.text),
       );
       libroObservable.notificar(); // Observer: avisa a Listar que debe refrescarse
       if (!mounted) return;
@@ -93,7 +97,7 @@ class _AgregarLibroState extends State<AgregarLibro> {
                   autocorrect: false, // es un código: sin autocorrección ni sugerencias
                   enableSuggestions: false,
                   textInputAction: TextInputAction.next,
-                  validator: validarObligatorio,
+                  validator: validarIsbn,
                 ),
                 TextFormField(
                   controller: _titulo,
@@ -118,7 +122,7 @@ class _AgregarLibroState extends State<AgregarLibro> {
                 CampoFecha(
                   etiqueta: 'Fecha de publicación',
                   valor: _fechaPublicacion,
-                  error: _intentado ? validarFecha(_fechaPublicacion) : null,
+                  error: _intentado ? validarFechaNoFutura(_fechaPublicacion) : null,
                   alCambiar: (fecha) => setState(() => _fechaPublicacion = fecha),
                 ),
                 DropdownButtonFormField<String>(
@@ -148,6 +152,27 @@ class _AgregarLibroState extends State<AgregarLibro> {
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
                   validator: validarEnteroPositivo,
+                ),
+              ],
+            ),
+            SeccionFormulario(
+              titulo: 'Datos opcionales',
+              descripcion: 'Se pueden dejar vacíos.',
+              children: [
+                TextFormField(
+                  controller: _editorial,
+                  decoration: const InputDecoration(labelText: 'Editorial (opcional)'),
+                  textCapitalization: TextCapitalization.words,
+                  validator: validarLargoMaximo(120),
+                ),
+                TextFormField(
+                  controller: _sinopsis,
+                  decoration: const InputDecoration(labelText: 'Sinopsis (opcional)', alignLabelWithHint: true),
+                  minLines: 3,
+                  maxLines: 6,
+                  maxLength: 500,
+                  textCapitalization: TextCapitalization.sentences,
+                  validator: validarLargoMaximo(500),
                 ),
               ],
             ),

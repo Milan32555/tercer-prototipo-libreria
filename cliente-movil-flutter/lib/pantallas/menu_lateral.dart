@@ -12,9 +12,18 @@ const _casosDeUso = [
   (ruta: 'eliminar', texto: 'Eliminar', icono: LucideIcons.trash2),
 ];
 
+/// Versión de la aplicación (se muestra en el menú y en Acerca de).
+const versionApp = '3.0.0';
+
+/// Solo para Libros: la consulta maestro + detalle.
+const _detalle = (ruta: 'detalle', texto: 'Detalle', icono: LucideIcons.bookOpenText);
+
+/// Opciones de Libros: Listar, Consultar, Detalle, Adicionar, Actualizar, Eliminar.
+final _casosLibro = [..._casosDeUso.take(2), _detalle, ..._casosDeUso.skip(2)];
+
 /// Las rutas en el mismo orden que los destinos del menú.
 final List<String> _rutas = [
-  for (final c in _casosDeUso) '/libros/${c.ruta}',
+  for (final c in _casosLibro) '/libros/${c.ruta}',
   for (final c in _casosDeUso) '/ejemplares/${c.ruta}',
   '/acerca-de',
 ];
@@ -47,7 +56,7 @@ class MenuLateral extends StatelessWidget {
           child: Marca(),
         ),
         seccion('Libros'),
-        for (final c in _casosDeUso) destino(c.texto, c.icono),
+        for (final c in _casosLibro) destino(c.texto, c.icono),
         const Padding(padding: EdgeInsets.symmetric(horizontal: 28, vertical: Espacio.e2), child: Divider()),
         seccion('Ejemplares'),
         for (final c in _casosDeUso) destino(c.texto, c.icono),
@@ -56,7 +65,7 @@ class MenuLateral extends StatelessWidget {
         destino('Acerca de...', LucideIcons.info),
         Padding(
           padding: const EdgeInsets.fromLTRB(28, Espacio.e6, 16, Espacio.e4),
-          child: Text('Versión 1.0.0', style: textos.bodySmall!.copyWith(color: kGris500)),
+          child: Text('Versión $versionApp', style: textos.bodySmall!.copyWith(color: kGris500)),
         ),
       ],
     );

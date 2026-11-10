@@ -7,8 +7,9 @@ import '../../tema/tema.dart';
 import '../../utilidades/formato.dart';
 import 'componentes.dart';
 
-/// Muestra TODA la información de un Libro (la fecha con hora): título y autor arriba y el resto
-/// de atributos debajo. Se usa al consultar, antes de eliminar y antes de editar.
+/// Muestra TODA la información de un Libro (la fecha con hora), incluidos los opcionales
+/// (editorial y sinopsis), el _id de MongoDB y la versión. Se usa al consultar, antes de eliminar
+/// y antes de editar.
 class FichaLibro extends StatelessWidget {
   const FichaLibro({super.key, required this.libro, this.titulo = 'Libro'});
 
@@ -29,12 +30,18 @@ class FichaLibro extends StatelessWidget {
         _Dato('Precio de venta', Text(formatearPrecio(libro.precio))),
         _Dato('Número de páginas', Text('${libro.numeroPaginas}')),
         _Dato('Fecha de publicación', Text(formatearFechaIso(libro.fechaPublicacion))),
+        _Dato('Editorial', _opcional(libro.editorial)),
+        if (libro.cantidadEjemplares != null) _Dato('Ejemplares', Text('${libro.cantidadEjemplares}')),
+        _Dato('Sinopsis', _opcional(libro.sinopsis), ancho: true),
+        if (libro.id != null) _Dato('ID en MongoDB (_id)', _codigoId(libro.id!), ancho: true),
+        if (libro.version != null) _Dato('Versión', Text('${libro.version}')),
       ],
     );
   }
 }
 
-/// Muestra TODA la información de un Ejemplar (la fecha de ingreso con hora).
+/// Muestra TODA la información de un Ejemplar (la fecha de ingreso con hora), las observaciones
+/// opcionales, el _id, la llave foránea libroId, la versión y el título y autor de su libro.
 class FichaEjemplar extends StatelessWidget {
   const FichaEjemplar({super.key, required this.ejemplar, this.titulo = 'Ejemplar'});
 
@@ -46,12 +53,16 @@ class FichaEjemplar extends StatelessWidget {
     return _MarcoFicha(
       tipo: titulo,
       titulo: ejemplar.codigo,
-      subtitulo: 'Libro ${ejemplar.isbnLibro}',
+      subtitulo: ejemplar.tituloLibro != null
+          ? '${ejemplar.tituloLibro} · ${ejemplar.autorLibro ?? ''}'
+          : 'Libro ${ejemplar.isbnLibro}',
       insignia: InsigniaEstado(ejemplar.estado),
       datos: [
         _Dato('Código', Text(ejemplar.codigo)),
         _Dato('Estado', InsigniaEstado(ejemplar.estado)),
         _Dato('Libro (ISBN)', Text(ejemplar.isbnLibro)),
+        if (ejemplar.tituloLibro != null) _Dato('Título del libro', Text(ejemplar.tituloLibro!)),
+        if (ejemplar.autorLibro != null) _Dato('Autor del libro', Text(ejemplar.autorLibro!)),
         _Dato('Ubicación', Text(ejemplar.ubicacion)),
         _Dato('Fecha de ingreso', Text(formatearFechaIso(ejemplar.fechaIngreso))),
         _Dato('Precio de reposición', Text(formatearPrecio(ejemplar.precioReposicion))),
@@ -67,17 +78,31 @@ class FichaEjemplar extends StatelessWidget {
             ],
           ),
         ),
+        _Dato('Observaciones', _opcional(ejemplar.observaciones), ancho: true),
+        if (ejemplar.id != null) _Dato('ID en MongoDB (_id)', _codigoId(ejemplar.id!), ancho: true),
+        if (ejemplar.libroId != null) _Dato('ID del libro (libroId)', _codigoId(ejemplar.libroId!), ancho: true),
+        if (ejemplar.version != null) _Dato('Versión', Text('${ejemplar.version}')),
       ],
     );
   }
 }
 
+/// Valor de un atributo opcional: el texto o "Sin registrar".
+Widget _opcional(String? valor) => (valor == null || valor.trim().isEmpty)
+    ? const Text('Sin registrar', style: TextStyle(color: kGris500, fontStyle: FontStyle.italic))
+    : Text(valor);
+
+Widget _codigoId(String id) => SelectableText(id, style: const TextStyle(fontSize: 12, color: kGris600, fontFamily: 'monospace'));
+
 class _Dato {
-  const _Dato(this.termino, this.valor, {this.nota});
+  const _Dato(this.termino, this.valor, {this.nota, this.ancho = false});
 
   final String termino;
   final Widget valor;
   final Widget? nota;
+
+  /// Ocupa toda la fila (sinopsis, observaciones, identificadores).
+  final bool ancho;
 }
 
 class _MarcoFicha extends StatelessWidget {
@@ -148,7 +173,7 @@ class _MarcoFicha extends StatelessWidget {
                     children: [
                       for (final dato in datos)
                         SizedBox(
-                          width: ancho,
+                          width: dato.ancho ? restricciones.maxWidth : ancho,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

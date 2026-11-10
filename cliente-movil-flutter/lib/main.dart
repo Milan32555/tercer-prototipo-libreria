@@ -11,6 +11,7 @@ import 'pantallas/libro/actualizar_libro.dart';
 import 'pantallas/libro/eliminar_libro.dart';
 import 'pantallas/libro/listar_libros.dart';
 import 'pantallas/libro/consultar_libro.dart';
+import 'pantallas/libro/detalle_libro.dart';
 
 import 'pantallas/ejemplar/agregar_ejemplar.dart';
 import 'pantallas/ejemplar/actualizar_ejemplar.dart';
@@ -55,6 +56,7 @@ class AplicacionLibreria extends StatelessWidget {
         '/libros/eliminar': (context) => const EliminarLibro(),
         '/libros/listar': (context) => const ListarLibros(),
         '/libros/consultar': (context) => const ConsultarLibro(),
+        '/libros/detalle': (context) => const DetalleLibroPantalla(),
 
         '/ejemplares/agregar': (context) => const AgregarEjemplar(),
         '/ejemplares/actualizar': (context) => const ActualizarEjemplar(),

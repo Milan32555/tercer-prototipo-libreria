@@ -8,6 +8,7 @@ import '../../servicios/servicio_ejemplar.dart';
 import '../../tema/tema.dart';
 import '../../utilidades/formato.dart';
 import '../../utilidades/validaciones.dart';
+import '../../servicios/servicio_libro.dart' show textoONulo;
 import '../comunes/campo_fecha.dart';
 import '../comunes/componentes.dart';
 import '../comunes/fichas.dart';
@@ -27,6 +28,7 @@ class _ActualizarEjemplarState extends State<ActualizarEjemplar> {
   final _codigoBusqueda = TextEditingController();
   final _ubicacion = TextEditingController();
   final _precioReposicion = TextEditingController();
+  final _observaciones = TextEditingController();
   DateTime? _fechaIngreso;
   String _estado = estadosEjemplar.first;
 
@@ -38,7 +40,7 @@ class _ActualizarEjemplarState extends State<ActualizarEjemplar> {
 
   @override
   void dispose() {
-    for (final c in [_codigoBusqueda, _ubicacion, _precioReposicion]) {
+    for (final c in [_codigoBusqueda, _ubicacion, _precioReposicion, _observaciones]) {
       c.dispose();
     }
     super.dispose();
@@ -68,6 +70,7 @@ class _ActualizarEjemplarState extends State<ActualizarEjemplar> {
         final precio = resultado.precioReposicion;
         _precioReposicion.text = precio == precio.roundToDouble() ? precio.toStringAsFixed(0) : '$precio';
         _fechaIngreso = DateTime.parse(resultado.fechaIngreso);
+        _observaciones.text = resultado.observaciones ?? '';
       });
     } on ErrorGraphQL catch (e) {
       if (mounted) setState(() => _error = e.mensaje);
@@ -79,6 +82,10 @@ class _ActualizarEjemplarState extends State<ActualizarEjemplar> {
   Future<void> _guardarCambios() async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (_ejemplar == null || !_formKey.currentState!.validate()) return;
+    if (validarFechaNoFutura(_fechaIngreso) != null) {
+      setState(() => _error = validarFechaNoFutura(_fechaIngreso));
+      return;
+    }
     setState(() {
       _cargando = true;
       _error = null;
@@ -86,10 +93,13 @@ class _ActualizarEjemplarState extends State<ActualizarEjemplar> {
     try {
       final actualizado = await actualizarEjemplar(
         codigo: _ejemplar!.codigo,
+        isbnLibro: _ejemplar!.isbnLibro,
         estado: _estado,
         ubicacion: _ubicacion.text.trim(),
         fechaIngreso: aFechaServidor(_fechaIngreso!),
         precioReposicion: double.parse(_precioReposicion.text.trim()),
+        observaciones: textoONulo(_observaciones.text),
+        version: _ejemplar!.version, // concurrencia optimista: la versión que se leyó al buscar
       );
       ejemplarObservable.notificar();
       if (!mounted) return;
@@ -207,6 +217,14 @@ class _ActualizarEjemplarState extends State<ActualizarEjemplar> {
             fillColor: kGris50,
             helperText: 'Lo calcula el servidor: suma 1 cada vez que el ejemplar pasa a Prestado.',
           ),
+        ),
+        TextFormField(
+          controller: _observaciones,
+          decoration: const InputDecoration(labelText: 'Observaciones (opcional)', alignLabelWithHint: true),
+          minLines: 2,
+          maxLines: 4,
+          maxLength: 300,
+          validator: validarLargoMaximo(300),
         ),
       ],
     ),

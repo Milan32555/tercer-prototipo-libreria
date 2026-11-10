@@ -369,3 +369,47 @@ class ConteoServidor extends StatelessWidget {
     );
   }
 }
+
+/// Controles de paginación de un Listar: "Página n de m" y botones anterior/siguiente.
+/// La página empieza en 0 (como en el servidor) pero se muestra empezando en 1.
+class Paginador extends StatelessWidget {
+  const Paginador({
+    super.key,
+    required this.pagina,
+    required this.totalPaginas,
+    required this.alCambiar,
+    this.ocupado = false,
+  });
+
+  final int pagina;
+  final int totalPaginas;
+  final ValueChanged<int> alCambiar;
+  final bool ocupado;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = totalPaginas < 1 ? 1 : totalPaginas;
+    final actual = pagina + 1 > total ? total : pagina + 1;
+    return Row(
+      children: [
+        IconButton(
+          tooltip: 'Página anterior',
+          onPressed: ocupado || pagina <= 0 ? null : () => alCambiar(pagina - 1),
+          icon: const Icon(LucideIcons.chevronLeft, size: 18),
+        ),
+        Expanded(
+          child: Text(
+            'Página $actual de $total',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(fontFeatures: cifrasTabulares),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Página siguiente',
+          onPressed: ocupado || pagina + 1 >= total ? null : () => alCambiar(pagina + 1),
+          icon: const Icon(LucideIcons.chevronRight, size: 18),
+        ),
+      ],
+    );
+  }
+}

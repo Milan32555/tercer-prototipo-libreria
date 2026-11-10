@@ -4,21 +4,25 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../servicios/cliente_graphql.dart';
 import '../servicios/servicio_libro.dart';
 import '../tema/tema.dart';
+import 'menu_lateral.dart' show versionApp;
 import 'comunes/componentes.dart';
 
-const _version = '1.0.0';
+const _version = versionApp;
 
 const _integrantes = ['Misael Gallo Tangarife', 'Sara Zambrano', 'Santiago Guimel', 'Alejandra González'];
 
 const _patrones = [
   (nombre: 'MVC', donde: 'Modelos y servicios de datos, observadores y pantallas en paquetes separados.'),
-  (nombre: 'Singleton', donde: 'Un único ClienteGraphQL en cada cliente y repositorios únicos en el servidor.'),
+  (nombre: 'Singleton', donde: 'Un único ClienteGraphQL en cada cliente. Los datos ya no están en listas: están en MongoDB.'),
   (nombre: 'Observer', donde: 'Las pantallas de Listar y el Inicio se actualizan solas cuando cambian los datos.'),
-  (nombre: 'Builder', donde: 'LibroBuilder y EjemplarBuilder construyen los objetos en el servidor.'),
+  (nombre: 'Builder', donde: 'Libro.builder() y Ejemplar.builder() (Lombok @Builder) construyen los documentos en el servidor.'),
   (nombre: 'SOLID', donde: 'Una responsabilidad por clase e inyección de dependencias en el servidor.'),
 ];
 
-const _tecnologias = ['Java 17', 'Spring Boot', 'Spring for GraphQL', 'React 18', 'TypeScript', 'Flutter', 'Dart'];
+const _tecnologias = [
+  'Java 17', 'Spring Boot 4', 'Spring for GraphQL', 'Spring Data MongoDB', 'MongoDB', 'React 18', 'TypeScript',
+  'Flutter', 'Dart',
+];
 
 /// Ayuda → Acerca de...: versión, integrantes, arquitectura (con el estado real del servidor),
 /// patrones de diseño y tecnologías.
@@ -44,7 +48,7 @@ class AcercaDe extends StatelessWidget {
               children: [
                 _Dato('Aplicación', 'Librería · App móvil'),
                 const _Dato('Versión', _version),
-                _Dato('Proyecto', 'Segundo Proyecto · Diseño de Soluciones\nUniversidad de Ibagué · 2026B'),
+                _Dato('Proyecto', 'Tercer Prototipo · Desarrollo de Aplicaciones Empresariales\nUniversidad de Ibagué · 2026B'),
               ],
             ),
           ),
@@ -186,8 +190,8 @@ class _DiagramaState extends State<_Diagrama> {
         ),
         const _Conector('GraphQL sobre HTTP (POST)'),
         const _Nodo(icono: LucideIcons.server, titulo: 'Servidor GraphQL', detalle: 'Java 17 · Spring Boot · toda la lógica'),
-        const _Conector('en memoria'),
-        const _Nodo(icono: LucideIcons.database, titulo: 'Repositorios', detalle: 'List<Libro> · List<Ejemplar>'),
+        const _Conector('Spring Data MongoDB'),
+        const _Nodo(icono: LucideIcons.database, titulo: 'MongoDB', detalle: 'Colecciones libros y ejemplares'),
         const SizedBox(height: Espacio.e3),
         Semantics(liveRegion: true, child: Text(estado, style: const TextStyle(color: kGris600, fontSize: 14))),
         Text(urlGraphQL, style: const TextStyle(color: kGris500, fontSize: 12)),

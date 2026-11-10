@@ -3,6 +3,7 @@ import 'package:cliente_movil_libreria/modelos/libro.dart';
 import 'package:cliente_movil_libreria/modelos/resumen_inventario.dart';
 import 'package:cliente_movil_libreria/observador/listado_observable.dart';
 import 'package:cliente_movil_libreria/servicios/cliente_graphql.dart';
+import 'package:cliente_movil_libreria/servicios/servicio_ejemplar.dart';
 import 'package:cliente_movil_libreria/servicios/servicio_libro.dart';
 import 'package:cliente_movil_libreria/servicios/servicio_resumen.dart';
 import 'package:cliente_movil_libreria/utilidades/formato.dart';
@@ -84,17 +85,35 @@ void main() {
       );
     });
 
-    test('pide la lista y su total (calculado por el servidor) en una sola petición', () async {
+    test('sin filtro pide la página de todos los libros; con filtro usa la consulta por precio y género', () async {
       final servidor = ServidorSimulado({
-        'librosFiltrados': (_) => [libroJson()],
-        'totalLibrosFiltrados': (_) => 1,
+        'libros': (_) => paginaJson([libroJson(cantidadEjemplares: 3)], total: 12, totalPaginas: 2),
+        'librosPorPrecioYGenero': (_) => paginaJson([libroJson()]),
       })..instalar();
 
-      final listado = await listarLibrosFiltrados(autor: ' restrepo ', genero: '');
+      final todos = await listarLibros(pagina: 0, tamanio: 10, genero: '');
+      expect(todos.contenido.single.titulo, 'Delirio');
+      expect(todos.contenido.single.editorial, 'Alfaguara');
+      expect(todos.contenido.single.cantidadEjemplares, 3);
+      expect(todos.totalElementos, 12);
+      expect(todos.totalPaginas, 2);
 
-      expect(listado.libros.single.titulo, 'Delirio');
-      expect(listado.total, 1);
-      expect(servidor.variablesDe('totalLibrosFiltrados').single, {'autor': 'restrepo', 'genero': null});
+      await listarLibros(pagina: 1, tamanio: 10, genero: 'FICCION', precioMax: 60000);
+      expect(servidor.variablesDe('librosPorPrecioYGenero').single,
+          {'min': null, 'max': 60000.0, 'genero': 'FICCION', 'pagina': 1, 'tamanio': 10});
+    });
+
+    test('ejemplares con su libro: lee título y autor del \$lookup', () async {
+      ServidorSimulado({'ejemplaresConLibro': (_) => paginaJson([ejemplarConLibroJson(observaciones: 'Firmado')])}).instalar();
+
+      final pagina = await listarEjemplaresConLibro(pagina: 0, tamanio: 10);
+
+      final fila = pagina.contenido.single;
+      expect(fila.tituloLibro, 'Cien años de soledad');
+      expect(fila.autorLibro, 'Gabriel García Márquez');
+      expect(fila.libroId, '6af377e075da53cd0c59ca9f');
+      expect(fila.observaciones, 'Firmado');
+      expect(fila.version, 0);
     });
 
     test('consulta el resumen del inventario al servidor', () async {
@@ -104,6 +123,8 @@ void main() {
 
       expect(resumen.totalLibros, 3);
       expect(resumen.totalEjemplares, 2);
+      expect(resumen.valorInventario, 1162000);
+      expect(resumen.tareas.map((t) => t.hilo), ['tarea-1', 'tarea-2', 'tarea-3']);
     });
 
     test('se identifica ante el servidor con el encabezado X-Cliente', () async {
@@ -202,6 +223,18 @@ void main() {
       expect(validarEnteroPositivo('1.5'), 'Escribe un número entero.');
       expect(validarEnteroPositivo('-3'), 'Debe ser mayor que cero.');
       expect(validarEnteroPositivo('120'), isNull);
+      // Las mismas reglas de formato que el servidor y el cliente web.
+      expect(validarIsbn('978-0307474728'), isNull);
+      expect(validarIsbn('0-306-40615-X'), isNull);
+      expect(validarIsbn('978-030747472'), 'El ISBN debe tener 10 o 13 dígitos (se permiten guiones).');
+      expect(validarIsbn('978--0307474728'), isNotNull);
+      expect(validarCodigoEjemplar('ej-001'), isNull);
+      expect(validarCodigoEjemplar('EJ-1'), 'Usa el formato EJ-000 (EJ- y de 3 a 6 dígitos).');
+      final ahora = DateTime(2026, 11, 10, 12);
+      expect(validarFechaNoFutura(DateTime(2026, 11, 10, 11, 59), ahora: ahora), isNull);
+      expect(validarFechaNoFutura(DateTime(2026, 11, 10, 12, 1), ahora: ahora), 'La fecha no puede ser futura.');
+      expect(validarLargoMaximo(3)('abcd'), 'Máximo 3 caracteres.');
+      expect(validarLargoMaximo(3)(null), isNull);
       expect(validarEnteroNoNegativo(''), 'Este campo es obligatorio.');
       expect(validarEnteroNoNegativo('0'), isNull);
       expect(validarEnteroNoNegativo('-1'), 'No puede ser negativo.');

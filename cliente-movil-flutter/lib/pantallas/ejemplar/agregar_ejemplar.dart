@@ -8,7 +8,9 @@ import '../../servicios/servicio_ejemplar.dart';
 import '../../tema/tema.dart';
 import '../../utilidades/formato.dart';
 import '../../utilidades/validaciones.dart';
+import '../../servicios/servicio_libro.dart' show textoONulo;
 import '../comunes/campo_fecha.dart';
+import '../comunes/campo_libro_por_isbn.dart';
 import '../comunes/componentes.dart';
 
 /// Caso de uso: Adicionar Ejemplar (una copia física de un libro que ya existe).
@@ -26,6 +28,7 @@ class _AgregarEjemplarState extends State<AgregarEjemplar> {
   final _ubicacion = TextEditingController();
   final _precioReposicion = TextEditingController();
   final _numeroPrestamos = TextEditingController(text: '0');
+  final _observaciones = TextEditingController();
   DateTime? _fechaIngreso;
   String _estado = estadosEjemplar.first;
 
@@ -35,7 +38,7 @@ class _AgregarEjemplarState extends State<AgregarEjemplar> {
 
   @override
   void dispose() {
-    for (final c in [_codigo, _isbnLibro, _ubicacion, _precioReposicion, _numeroPrestamos]) {
+    for (final c in [_codigo, _isbnLibro, _ubicacion, _precioReposicion, _numeroPrestamos, _observaciones]) {
       c.dispose();
     }
     super.dispose();
@@ -45,7 +48,7 @@ class _AgregarEjemplarState extends State<AgregarEjemplar> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _intentado = true);
     final valido = _formKey.currentState!.validate();
-    if (!valido || validarFecha(_fechaIngreso) != null) return;
+    if (!valido || validarFechaNoFutura(_fechaIngreso) != null) return;
 
     setState(() {
       _enviando = true;
@@ -53,13 +56,14 @@ class _AgregarEjemplarState extends State<AgregarEjemplar> {
     });
     try {
       final ejemplar = await crearEjemplar(
-        codigo: _codigo.text.trim(),
+        codigo: _codigo.text.trim().toUpperCase(),
         estado: _estado,
         ubicacion: _ubicacion.text.trim(),
         fechaIngreso: aFechaServidor(_fechaIngreso!),
         precioReposicion: double.parse(_precioReposicion.text.trim()),
         numeroPrestamos: int.parse(_numeroPrestamos.text.trim()),
         isbnLibro: _isbnLibro.text.trim(),
+        observaciones: textoONulo(_observaciones.text),
       );
       ejemplarObservable.notificar();
       if (!mounted) return;
@@ -97,16 +101,9 @@ class _AgregarEjemplarState extends State<AgregarEjemplar> {
                   autocorrect: false,
                   enableSuggestions: false,
                   textInputAction: TextInputAction.next,
-                  validator: validarObligatorio,
+                  validator: validarCodigoEjemplar,
                 ),
-                TextFormField(
-                  controller: _isbnLibro,
-                  decoration: const InputDecoration(labelText: 'ISBN del libro', hintText: '978-0307474728'),
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  textInputAction: TextInputAction.next,
-                  validator: validarObligatorio,
-                ),
+                CampoLibroPorIsbn(controller: _isbnLibro),
               ],
             ),
             SeccionFormulario(
@@ -137,7 +134,7 @@ class _AgregarEjemplarState extends State<AgregarEjemplar> {
                 CampoFecha(
                   etiqueta: 'Fecha de ingreso',
                   valor: _fechaIngreso,
-                  error: _intentado ? validarFecha(_fechaIngreso) : null,
+                  error: _intentado ? validarFechaNoFutura(_fechaIngreso) : null,
                   alCambiar: (fecha) => setState(() => _fechaIngreso = fecha),
                 ),
                 TextFormField(
@@ -153,6 +150,14 @@ class _AgregarEjemplarState extends State<AgregarEjemplar> {
                   keyboardType: const TextInputType.numberWithOptions(signed: true),
                   textInputAction: TextInputAction.done,
                   validator: validarEnteroNoNegativo,
+                ),
+                TextFormField(
+                  controller: _observaciones,
+                  decoration: const InputDecoration(labelText: 'Observaciones (opcional)', alignLabelWithHint: true),
+                  minLines: 2,
+                  maxLines: 4,
+                  maxLength: 300,
+                  validator: validarLargoMaximo(300),
                 ),
               ],
             ),
