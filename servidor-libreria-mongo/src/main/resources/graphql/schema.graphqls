@@ -1,0 +1,225 @@
+scalar LocalDateTime
+
+enum Genero {
+    FICCION
+    NO_FICCION
+    CIENCIA
+    HISTORIA
+    INFANTIL
+    POESIA
+    OTRO
+}
+
+enum EstadoEjemplar {
+    DISPONIBLE
+    PRESTADO
+    DANIADO
+    DADO_DE_BAJA
+}
+
+"Colección A (maestro): documento de la colección libros."
+type Libro {
+    "Llave primaria: el _id (ObjectId) del documento, en hexadecimal"
+    id: ID!
+    isbn: ID!
+    titulo: String!
+    autor: String!
+    precio: Float!
+    numeroPaginas: Int!
+    fechaPublicacion: LocalDateTime!
+    genero: Genero!
+    "Opcional"
+    editorial: String
+    "Opcional (máximo 500 caracteres)"
+    sinopsis: String
+    "Versión del documento (concurrencia optimista). Se devuelve en LibroInput al actualizar."
+    version: Int
+    "Cuántos ejemplares tiene (lo cuenta MongoDB)"
+    cantidadEjemplares: Int!
+    "Ejemplares de este libro (0..*)"
+    ejemplares: [Ejemplar!]!
+}
+
+"Colección B (detalle): documento de la colección ejemplares."
+type Ejemplar {
+    "Llave primaria: el _id (ObjectId) del documento"
+    id: ID!
+    codigo: ID!
+    "Llave foránea: el ObjectId del libro (_id en la colección libros)"
+    libroId: ID!
+    "ISBN del libro al que pertenece (traducido desde libroId)"
+    isbnLibro: String!
+    estado: EstadoEjemplar!
+    ubicacion: String!
+    fechaIngreso: LocalDateTime!
+    precioReposicion: Float!
+    "Veces que se ha prestado. El servidor le suma 1 cuando el ejemplar pasa a PRESTADO."
+    numeroPrestamos: Int!
+    "Opcional"
+    observaciones: String
+    version: Int
+    libro: Libro!
+}
+
+"Fila de Listar Ejemplares: todos los atributos del ejemplar más isbn, título y autor de su libro ($lookup)."
+type EjemplarConLibro {
+    id: ID!
+    codigo: ID!
+    libroId: ID!
+    isbnLibro: String
+    tituloLibro: String
+    autorLibro: String
+    estado: EstadoEjemplar!
+    ubicacion: String!
+    fechaIngreso: LocalDateTime!
+    precioReposicion: Float!
+    numeroPrestamos: Int!
+    observaciones: String
+    version: Int
+}
+
+type PaginaLibros {
+    contenido: [Libro!]!
+    "Número de página (empieza en 0)"
+    pagina: Int!
+    tamanio: Int!
+    totalElementos: Int!
+    totalPaginas: Int!
+}
+
+type PaginaEjemplares {
+    contenido: [Ejemplar!]!
+    pagina: Int!
+    tamanio: Int!
+    totalElementos: Int!
+    totalPaginas: Int!
+}
+
+type PaginaEjemplaresConLibro {
+    contenido: [EjemplarConLibro!]!
+    pagina: Int!
+    tamanio: Int!
+    totalElementos: Int!
+    totalPaginas: Int!
+}
+
+"Cuántos ejemplares hay en un estado y qué porcentaje (0 a 100) representan."
+type ConteoEstado {
+    estado: EstadoEjemplar!
+    cantidad: Int!
+    porcentaje: Float!
+}
+
+"Maestro + detalle: un libro, sus ejemplares y los conteos por estado."
+type DetalleLibro {
+    libro: Libro!
+    ejemplares: [Ejemplar!]!
+    conteoPorEstado: [ConteoEstado!]!
+    totalEjemplares: Int!
+    totalPrestamos: Int!
+    valorReposicion: Float!
+}
+
+"Cómo terminó una de las 3 tareas concurrentes del resumen."
+type ResultadoTarea {
+    nombre: String!
+    hilo: String!
+    duracionMs: Int!
+    exitosa: Boolean!
+    mensaje: String!
+}
+
+"Resumen del inventario para la ventana principal (3 tareas en paralelo en el servidor)."
+type ResumenInventario {
+    totalLibros: Int!
+    totalEjemplares: Int!
+    "Un elemento por estado, en el orden del enum (incluye los que tienen 0)"
+    ejemplaresPorEstado: [ConteoEstado!]!
+    "Suma del precio de reposición de todos los ejemplares"
+    valorInventario: Float!
+    duracionMs: Int!
+    tareas: [ResultadoTarea!]!
+}
+
+type ResultadoCarga {
+    librosCreados: Int!
+    ejemplaresCreados: Int!
+    duracionMs: Int!
+}
+
+"Datos de un libro para crearlo o actualizarlo. Al actualizar, el isbn indica qué libro se modifica."
+input LibroInput {
+    isbn: ID!
+    titulo: String!
+    autor: String!
+    precio: Float!
+    numeroPaginas: Int!
+    fechaPublicacion: LocalDateTime!
+    genero: Genero!
+    editorial: String
+    sinopsis: String
+    "Solo al actualizar: la versión que se leyó al buscar el libro"
+    version: Int
+}
+
+"Datos de un ejemplar para crearlo o actualizarlo. Al actualizar, el código indica qué ejemplar se modifica y numeroPrestamos se ignora."
+input EjemplarInput {
+    codigo: ID!
+    isbnLibro: String!
+    estado: EstadoEjemplar!
+    ubicacion: String!
+    fechaIngreso: LocalDateTime!
+    precioReposicion: Float!
+    numeroPrestamos: Int
+    observaciones: String
+    "Solo al actualizar: la versión que se leyó al buscar el ejemplar"
+    version: Int
+}
+
+type Query {
+    "Listar todos los libros (paginado)"
+    libros(pagina: Int! = 0, tamanio: Int! = 10): PaginaLibros!
+    "Consulta personalizada: libros por rango de precio y género (filtro en MongoDB, paginado)"
+    librosPorPrecioYGenero(precioMin: Float, precioMax: Float, genero: Genero, pagina: Int! = 0, tamanio: Int! = 10): PaginaLibros!
+    "Consultar UN libro por su ISBN"
+    libroPorIsbn(isbn: ID!): Libro
+    "Consultar UN libro por su título exacto (sin distinguir mayúsculas ni tildes)"
+    libroPorTitulo(titulo: String!): Libro
+    "Maestro + detalle: el libro con sus ejemplares y los conteos por estado"
+    detalleLibro(isbn: ID!): DetalleLibro
+    "Aumenta cada vez que la colección libros cambia (Observer de los clientes)"
+    revisionLibros: Int!
+
+    "Listar todos los ejemplares (paginado)"
+    ejemplares(pagina: Int! = 0, tamanio: Int! = 10): PaginaEjemplares!
+    "Consulta personalizada ($lookup): ejemplares con título y autor de su libro, filtrados por estado y/o ISBN"
+    ejemplaresConLibro(estado: EstadoEjemplar, isbn: String, pagina: Int! = 0, tamanio: Int! = 10): PaginaEjemplaresConLibro!
+    "Consultar UN ejemplar por su código"
+    ejemplarPorCodigo(codigo: ID!): Ejemplar
+    "Consultar ejemplares por ISBN del libro + ubicación (puede haber varias copias en la misma ubicación)"
+    ejemplaresPorLibroYUbicacion(isbn: String!, ubicacion: String!): [Ejemplar!]!
+    "Aumenta cada vez que la colección ejemplares cambia (Observer de los clientes)"
+    revisionEjemplares: Int!
+
+    "Resumen del inventario (3 tareas concurrentes)"
+    resumenInventario: ResumenInventario!
+}
+
+type Mutation {
+    "Crea el libro (su ISBN no debe existir)"
+    crearLibro(input: LibroInput!): Libro
+    "Actualiza el libro cuyo ISBN viene en el input"
+    actualizarLibro(input: LibroInput!): Libro
+    "Elimina el libro (solo si no tiene ejemplares) y devuelve sus datos"
+    eliminarLibro(isbn: ID!): Libro
+
+    "Crea el ejemplar (su código no debe existir y el libro sí)"
+    crearEjemplar(input: EjemplarInput!): Ejemplar
+    "Actualiza el ejemplar cuyo código viene en el input"
+    actualizarEjemplar(input: EjemplarInput!): Ejemplar
+    "Elimina el ejemplar y devuelve sus datos"
+    eliminarEjemplar(codigo: ID!): Ejemplar
+
+    "Solo desarrollo (perfil carga): genera datos de prueba de carga"
+    generarDatosCarga(libros: Int! = 1000, ejemplares: Int! = 5000): ResultadoCarga
+}

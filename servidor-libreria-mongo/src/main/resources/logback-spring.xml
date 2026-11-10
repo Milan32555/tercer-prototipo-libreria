@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Registro del servidor:
+  - Consola: hora, nivel, hilo, clase y mensaje.
+  - Archivo logs/servidor.log: lo mismo, con rotación diaria y por tamaño (5 MB, 14 días).
+  - Logger "operaciones" (RegistroOperaciones): una línea corta por operación GraphQL con el
+    cliente que la hizo, por ejemplo  12:41:05  App móvil    | mutación crearLibro (isbn=978-1)
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="PATRON" value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"/>
+    <property name="ARCHIVO_LOG" value="${LOG_PATH:-logs}/servidor.log"/>
+
+    <appender name="CONSOLA" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${PATRON}</pattern>
+            <charset>${CONSOLE_LOG_CHARSET}</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ARCHIVO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${ARCHIVO_LOG}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH:-logs}/servidor.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>5MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>100MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${PATRON}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="OPERACIONES" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss}  %msg%n</pattern>
+            <charset>${CONSOLE_LOG_CHARSET}</charset>
+        </encoder>
+    </appender>
+
+    <logger name="operaciones" level="INFO" additivity="false">
+        <appender-ref ref="OPERACIONES"/>
+        <appender-ref ref="ARCHIVO"/>
+    </logger>
+
+    <!-- Menos ruido del controlador de MongoDB -->
+    <logger name="org.mongodb.driver" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLA"/>
+        <appender-ref ref="ARCHIVO"/>
+    </root>
+</configuration>
