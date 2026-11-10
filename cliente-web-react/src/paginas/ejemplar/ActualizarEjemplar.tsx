@@ -123,7 +123,7 @@ export default function ActualizarEjemplar() {
         {!ejemplar && !guardado && (
           <BuscadorClave etiqueta="Código del ejemplar" placeholder="EJ-001" cargando={cargando} alBuscar={buscar} />
         )}
-        {error && <Banner titulo={ejemplar ? "No se pudieron guardar los cambios" : "No se pudo buscar el ejemplar"}>{error}</Banner>}
+        {error && !ejemplar && <Banner titulo="No se pudo buscar el ejemplar">{error}</Banner>}
         {sinResultado && <SinResultados titulo="Sin resultados">{sinResultado}</SinResultados>}
 
         {guardado && (
@@ -169,6 +169,13 @@ export default function ActualizarEjemplar() {
                              error={errores.observaciones} maximo={300} />
                 </div>
               </section>
+              {/* Junto a los botones: el usuario está al final del formulario y debe ver el rechazo
+                  (por ejemplo, el conflicto de versión) sin tener que subir. */}
+              {error && (
+                <div className="seccion-formulario-error">
+                  <Banner titulo="No se pudieron guardar los cambios">{error}</Banner>
+                </div>
+              )}
               <div className="acciones acciones-pie">
                 <Boton onClick={reiniciar}>Cancelar</Boton>
                 <Boton type="submit" variante="primario" icono={Save} cargando={cargando}>Guardar cambios</Boton>

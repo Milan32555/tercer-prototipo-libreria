@@ -1,13 +1,15 @@
 import { expect, test } from "@playwright/test";
 import {
-  abrirMenu, capturar, crearEjemplar, crearLibro, elegir, esperarAviso, graphql, unico
+  abrirMenu, capturar, codigoUnico, crearEjemplar, crearLibro, elegir, esperarAviso, graphql, isbnUnico
 } from "./utilidades";
 
-// Recorre TODOS los casos de uso de Libro y de Ejemplar contra el servidor real.
-// Cada prueba crea sus propios datos (con un sufijo único) o solo lee los datos de prueba.
+// Recorre TODOS los casos de uso de Libro y de Ejemplar contra el servidor real con MongoDB.
+// Cada prueba crea sus propios datos (con un ISBN/código único) o solo lee los datos de prueba.
+
+type PaginaTotal = { totalElementos: number; totalPaginas: number };
 
 test.describe("Menú principal y Ayuda", () => {
-  test("el inicio muestra exactamente lo que calcula el servidor", async ({ page, request }, info) => {
+  test("el inicio muestra exactamente lo que calcula el servidor (3 tareas)", async ({ page, request }, info) => {
     await page.goto("/");
     const { resumenInventario: r } = await graphql<{ resumenInventario: { totalLibros: number; totalEjemplares: number } }>(
       request, "{ resumenInventario { totalLibros totalEjemplares } }"
@@ -16,7 +18,8 @@ test.describe("Menú principal y Ayuda", () => {
     await expect(cifras.getByText(String(r.totalLibros), { exact: true })).toBeVisible();
     await expect(cifras.getByText(String(r.totalEjemplares), { exact: true })).toBeVisible();
     await expect(page.getByText(`${r.totalEjemplares} copias · calculado por el servidor`)).toBeVisible();
-    await capturar(page, info, "01-inicio");
+    await expect(page.getByText(/3 tareas en paralelo en el servidor/)).toContainText("tarea-");
+    await capturar(page, info, "01-inicio", true);
   });
 
   test("el menú tiene cada caso de uso y Ayuda > Acerca de... con integrantes y versión", async ({ page }, info) => {
@@ -25,22 +28,24 @@ test.describe("Menú principal y Ayuda", () => {
     for (const opcion of ["Listar", "Consultar", "Adicionar", "Actualizar", "Eliminar"]) {
       await expect(menu.getByRole("link", { name: opcion, exact: true })).toHaveCount(2);
     }
+    await expect(menu.getByRole("link", { name: "Detalle", exact: true })).toHaveCount(1);
     await capturar(page, info, "02-menu");
     await menu.getByRole("link", { name: "Acerca de..." }).click();
 
     await expect(page.getByRole("heading", { level: 1, name: "Acerca de" })).toBeVisible();
-    await expect(page.getByText("1.0.0", { exact: true })).toBeVisible();
+    await expect(page.getByText("3.0.0", { exact: true })).toBeVisible();
     for (const integrante of ["Misael Gallo Tangarife", "Sara Zambrano", "Santiago Guimel", "Alejandra González"]) {
       await expect(page.getByText(integrante)).toBeVisible();
     }
+    await expect(page.getByText("Colecciones libros y ejemplares")).toBeVisible();
     await expect(page.getByText(/Servidor conectado · \d+ ms/)).toBeVisible();
     await capturar(page, info, "03-acerca-de", true);
   });
 });
 
 test.describe("Libro", () => {
-  test("adicionar: válido", async ({ page, request }, info) => {
-    const isbn = `978-E2E-${unico(info)}`;
+  test("adicionar: válido, con los opcionales", async ({ page, request }, info) => {
+    const isbn = isbnUnico(info);
     await page.goto("/libros/agregar");
     await page.getByLabel("ISBN").fill(isbn);
     await page.getByLabel("Título").fill("Cóndores no entierran todos los días");
@@ -49,25 +54,35 @@ test.describe("Libro", () => {
     await elegir(page, "Género", "Ficción");
     await page.getByLabel("Precio").fill("47000");
     await page.getByLabel("Número de páginas").fill("246");
+    await page.getByLabel("Editorial (opcional)").fill("Plaza & Janés");
+    await page.getByLabel("Sinopsis (opcional)").fill("La violencia partidista en Tuluá.");
     await capturar(page, info, "10-libro-adicionar-formulario", true);
     await page.getByRole("button", { name: "Adicionar libro" }).click();
 
     await esperarAviso(page, "Libro adicionado");
     await capturar(page, info, "11-libro-adicionar-exito");
-    const { libroPorIsbn } = await graphql<{ libroPorIsbn: { titulo: string; numeroPaginas: number; fechaPublicacion: string } }>(
-      request, `query ($isbn: ID!) { libroPorIsbn(isbn: $isbn) { titulo numeroPaginas fechaPublicacion } }`, { isbn }
+    const { libroPorIsbn } = await graphql<{ libroPorIsbn: Record<string, unknown> }>(
+      request,
+      `query ($isbn: ID!) { libroPorIsbn(isbn: $isbn) { titulo numeroPaginas fechaPublicacion editorial sinopsis version } }`,
+      { isbn }
     );
-    expect(libroPorIsbn).toEqual({ titulo: "Cóndores no entierran todos los días", numeroPaginas: 246, fechaPublicacion: "1971-06-15T09:45:00" });
+    expect(libroPorIsbn).toEqual({
+      titulo: "Cóndores no entierran todos los días", numeroPaginas: 246, fechaPublicacion: "1971-06-15T09:45:00",
+      editorial: "Plaza & Janés", sinopsis: "La violencia partidista en Tuluá.", version: 0
+    });
   });
 
-  test("adicionar: inválido (formato en el cliente y regla del servidor)", async ({ page }, info) => {
+  test("adicionar: inválido (formato en el cliente y reglas del servidor)", async ({ page }, info) => {
     await page.goto("/libros/agregar");
     await page.getByRole("button", { name: "Adicionar libro" }).click();
     await expect(page.getByText("Este campo es obligatorio.")).toHaveCount(5);
     await expect(page.getByText("Elige la fecha y la hora.")).toBeVisible();
+    await page.getByLabel("ISBN").fill("978-12");
+    await page.getByRole("button", { name: "Adicionar libro" }).click();
+    await expect(page.getByText("El ISBN debe tener 10 o 13 dígitos (se permiten guiones).")).toBeVisible();
     await capturar(page, info, "12-libro-adicionar-validacion", true);
 
-    // ISBN repetido: lo rechaza el servidor.
+    // ISBN repetido: lo rechaza el servidor (índice único de MongoDB).
     await page.getByLabel("ISBN").fill("978-0307474728");
     await page.getByLabel("Título").fill("Copia");
     await page.getByLabel("Autor").fill("Alguien");
@@ -83,9 +98,11 @@ test.describe("Libro", () => {
     await page.goto("/libros/consultar");
     await page.getByLabel("ISBN", { exact: true }).fill("978-0307474728");
     await page.getByRole("button", { name: "Buscar" }).click();
-    await expect(page.getByRole("heading", { name: "Cien años de soledad" })).toBeVisible();
-    await expect(page.getByText("30/05/1967, 00:00")).toBeVisible();
-    await capturar(page, info, "20-libro-consultar-isbn");
+    const ficha = page.getByRole("article", { name: "Libro Cien años de soledad" });
+    await expect(ficha).toContainText("30/05/1967, 00:00");
+    await expect(ficha).toContainText("Sudamericana");
+    await expect(ficha).toContainText("ID en MongoDB (_id)");
+    await capturar(page, info, "20-libro-consultar-isbn", true);
 
     await page.getByText("Por título").click();
     await page.getByRole("textbox", { name: "Título" }).fill("la voragine");
@@ -99,8 +116,24 @@ test.describe("Libro", () => {
     await capturar(page, info, "22-libro-consultar-no-encontrado");
   });
 
-  test("actualizar: busca, muestra todo y guarda", async ({ page, request }, info) => {
-    const isbn = `978-E2E-${unico(info)}`;
+  test("detalle: maestro (libro) + detalle (ejemplares) con conteos del servidor", async ({ page, request }, info) => {
+    const { detalleLibro } = await graphql<{ detalleLibro: { totalEjemplares: number } }>(
+      request, `{ detalleLibro(isbn: "978-0307474728") { totalEjemplares } }`
+    );
+    await page.goto("/libros/detalle");
+    await page.getByLabel("ISBN del libro").fill("978-0307474728");
+    await page.getByRole("button", { name: "Buscar" }).click();
+    await expect(page.getByText("Maestro: libro")).toBeVisible();
+    const tabla = page.getByRole("table", { name: "Ejemplares del libro" });
+    for (const codigo of ["EJ-001", "EJ-002", "EJ-004"]) {
+      await expect(tabla.getByText(codigo, { exact: true })).toBeVisible();
+    }
+    await expect(page.getByText(`Detalle: ${detalleLibro.totalEjemplares} ejemplares`)).toBeVisible();
+    await capturar(page, info, "23-libro-detalle", true);
+  });
+
+  test("actualizar: busca, muestra todo, guarda y detecta el conflicto de versión", async ({ page, request }, info) => {
+    const isbn = isbnUnico(info);
     await crearLibro(request, isbn);
     await page.goto("/libros/actualizar");
     await page.getByLabel("ISBN del libro").fill(isbn);
@@ -108,6 +141,7 @@ test.describe("Libro", () => {
     await expect(page.getByText("Datos actuales", { exact: true })).toBeVisible();
     await expect(page.getByText("10/05/2020, 08:30")).toBeVisible();
     await expect(page.getByLabel("Precio")).toHaveValue("50000");
+    await expect(page.getByLabel("Editorial (opcional)")).toHaveValue("Editorial E2E");
     await page.getByLabel("Precio").fill("52500");
     await elegir(page, "Género", "Historia");
     await capturar(page, info, "30-libro-actualizar-formulario", true);
@@ -116,19 +150,36 @@ test.describe("Libro", () => {
     await esperarAviso(page, "Cambios guardados");
     await expect(page.getByText("Datos guardados", { exact: true })).toBeVisible();
     await capturar(page, info, "31-libro-actualizar-guardado");
-    const { libroPorIsbn } = await graphql<{ libroPorIsbn: { precio: number; genero: string } }>(
-      request, `query ($isbn: ID!) { libroPorIsbn(isbn: $isbn) { precio genero } }`, { isbn }
+    const { libroPorIsbn } = await graphql<{ libroPorIsbn: { precio: number; genero: string; version: number } }>(
+      request, `query ($isbn: ID!) { libroPorIsbn(isbn: $isbn) { precio genero version } }`, { isbn }
     );
-    expect(libroPorIsbn).toEqual({ precio: 52500, genero: "HISTORIA" });
+    expect(libroPorIsbn).toEqual({ precio: 52500, genero: "HISTORIA", version: 1 });
+
+    // Otro "usuario" cambia el libro mientras esta pantalla lo tiene abierto: al guardar, conflicto.
+    await page.getByRole("button", { name: "Actualizar otro libro" }).click();
+    await page.getByLabel("ISBN del libro").fill(isbn);
+    await page.getByRole("button", { name: "Buscar" }).click();
+    await expect(page.getByText("Datos actuales", { exact: true })).toBeVisible();
+    await graphql(request, `mutation ($input: LibroInput!) { actualizarLibro(input: $input) { version } }`, {
+      input: {
+        isbn, titulo: "Cambiado por otro usuario", autor: "Autora E2E", precio: 1000, numeroPaginas: 200,
+        fechaPublicacion: "2020-05-10T08:30:00", genero: "FICCION", version: 1
+      }
+    });
+    await page.getByLabel("Precio").fill("60000");
+    await page.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByRole("alert")).toContainText("Otro usuario modificó este libro; vuelva a buscarlo.");
+    await capturar(page, info, "32-libro-actualizar-conflicto");
   });
 
   test("eliminar: cancelar no borra y confirmar sí", async ({ page, request }, info) => {
-    const isbn = `978-E2E-${unico(info)}`;
+    const isbn = isbnUnico(info);
     await crearLibro(request, isbn, "Libro para eliminar");
     await page.goto("/libros/eliminar");
     await page.getByLabel("ISBN del libro").fill(isbn);
     await page.getByRole("button", { name: "Buscar" }).click();
     await expect(page.getByText("Libro a eliminar", { exact: true })).toBeVisible();
+    await expect(page.getByText("Editorial E2E")).toBeVisible();
     await capturar(page, info, "40-libro-eliminar-ficha", true);
 
     await page.getByRole("button", { name: "Eliminar libro" }).click();
@@ -162,25 +213,33 @@ test.describe("Libro", () => {
     expect(libroPorIsbn).not.toBeNull();
   });
 
-  test("listar con cada filtro: el conteo es el del servidor", async ({ page, request }, info) => {
+  test("listar: todos paginado y por filtro de género y precio (conteos del servidor)", async ({ page, request }, info) => {
     await page.goto("/libros/listar");
     await expect(page.getByRole("table", { name: "Libros del inventario" })).toBeVisible();
+    const { libros } = await graphql<{ libros: PaginaTotal }>(request, "{ libros(pagina: 0, tamanio: 10) { totalElementos totalPaginas } }");
+    await expect(page.getByText(`${libros.totalElementos} libros`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`Página 1 de ${libros.totalPaginas}`)).toBeVisible();
     await capturar(page, info, "50-libro-listar");
+    if (libros.totalPaginas > 1) {
+      await page.getByRole("button", { name: "Página siguiente" }).click();
+      await expect(page.getByText(`Página 2 de ${libros.totalPaginas}`)).toBeVisible();
+      await capturar(page, info, "51-libro-listar-pagina-2");
+    }
 
-    const total = async (autor: string | null, genero: string | null) =>
-      (await graphql<{ totalLibrosFiltrados: number }>(
+    const total = async (genero: string | null, min: number | null, max: number | null) =>
+      (await graphql<{ librosPorPrecioYGenero: PaginaTotal }>(
         request,
-        `query ($a: String, $g: Genero) { totalLibrosFiltrados(autor: $a, genero: $g) }`,
-        { a: autor, g: genero }
-      )).totalLibrosFiltrados;
+        `query ($g: Genero, $min: Float, $max: Float) { librosPorPrecioYGenero(genero: $g, precioMin: $min, precioMax: $max) { totalElementos } }`,
+        { g: genero, min, max }
+      )).librosPorPrecioYGenero.totalElementos;
     const conteo = (n: number) => (n === 1 ? "1 libro" : `${n} libros`);
 
-    await page.getByLabel("Autor").fill("garcia");
+    await page.getByLabel("Precio mínimo").fill("40000");
+    await page.getByLabel("Precio máximo").fill("60000");
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await expect(page.getByText(conteo(await total("garcia", null)), { exact: true })).toBeVisible();
-    await expect(page.getByRole("cell", { name: /Cien años de soledad/ })).toBeVisible();
-    await capturar(page, info, "51-libro-listar-autor");
-    await page.getByRole("button", { name: "Limpiar filtros" }).first().click();
+    await expect(page.getByText(conteo(await total(null, 40000, 60000)), { exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: /Pedro Páramo/ })).toBeVisible();
+    await capturar(page, info, "52-libro-listar-precio");
 
     const generos: [string, string][] = [
       ["Ficción", "FICCION"], ["No ficción", "NO_FICCION"], ["Ciencia", "CIENCIA"], ["Historia", "HISTORIA"],
@@ -188,19 +247,23 @@ test.describe("Libro", () => {
     ];
     for (const [texto, valor] of generos) {
       await elegir(page, "Género", texto);
-      await expect(page.getByText(conteo(await total(null, valor)), { exact: true })).toBeVisible();
+      await expect(page.getByText(conteo(await total(valor, 40000, 60000)), { exact: true })).toBeVisible();
     }
+    await page.getByRole("button", { name: "Limpiar filtros" }).first().click();
     await elegir(page, "Género", "Poesía");
+    await expect(page.getByText(conteo(await total("POESIA", null, null)), { exact: true })).toBeVisible();
     await expect(page.getByRole("cell", { name: /Veinte poemas de amor/ })).toBeVisible();
-    await capturar(page, info, "52-libro-listar-genero");
-    await elegir(page, "Género", "Todos los géneros");
-    await expect(page.getByText(conteo(await total(null, null)), { exact: true })).toBeVisible();
+    await capturar(page, info, "53-libro-listar-genero");
   });
 
   test("Observer: lo que se adiciona en otra pestaña aparece solo en Listar (≤ 15 s)", async ({ page, context, request }, info) => {
-    const isbn = `978-E2E-${unico(info)}`;
+    const isbn = isbnUnico(info);
+    const precio = 31000 + Math.floor(Math.random() * 999);
     await page.goto("/libros/listar");
-    await expect(page.getByRole("table", { name: "Libros del inventario" })).toBeVisible();
+    await page.getByLabel("Precio mínimo").fill(String(precio));
+    await page.getByLabel("Precio máximo").fill(String(precio));
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await expect(page.getByText("Ningún libro coincide con el filtro")).toBeVisible();
 
     const otra = await context.newPage();
     await otra.goto("/libros/agregar");
@@ -208,27 +271,27 @@ test.describe("Libro", () => {
     await otra.getByLabel("Título").fill("Observado desde otra pestaña");
     await otra.getByLabel("Autor").fill("Autora E2E");
     await otra.getByLabel("Fecha de publicación").fill("2024-01-01T12:00");
-    await otra.getByLabel("Precio").fill("30000");
+    await otra.getByLabel("Precio").fill(String(precio));
     await otra.getByLabel("Número de páginas").fill("100");
     await otra.getByRole("button", { name: "Adicionar libro" }).click();
     await expect(otra.getByText("Libro adicionado", { exact: true })).toBeVisible();
     await otra.close();
 
-    // Sin recargar: el Observer entre clientes revisa el servidor cada 15 s.
+    // Sin recargar: el Observer entre clientes revisa la revisión de la colección cada 15 s.
     const nuevo = page.getByRole("cell", { name: /Observado desde otra pestaña/ });
     await expect(nuevo).toBeVisible({ timeout: 20_000 });
-    await nuevo.scrollIntoViewIfNeeded();
-    await capturar(page, info, "53-libro-listar-observer");
+    await capturar(page, info, "54-libro-listar-observer");
     await graphql(request, `mutation ($isbn: ID!) { eliminarLibro(isbn: $isbn) { isbn } }`, { isbn });
   });
 });
 
 test.describe("Ejemplar", () => {
-  test("adicionar: válido e inválido", async ({ page, request }, info) => {
-    const codigo = `EJ-E2E-${unico(info)}`;
+  test("adicionar: válido (libro elegido por ISBN) e inválido", async ({ page, request }, info) => {
+    const codigo = codigoUnico(info);
     await page.goto("/ejemplares/agregar");
     await page.getByLabel("Código del ejemplar").fill(codigo);
     await page.getByLabel("ISBN del libro").fill("978-8420633121");
+    await expect(page.getByText("Ficciones")).toBeVisible(); // el libro elegido
     await elegir(page, "Estado", "Disponible");
     await page.getByLabel("Ubicación", { exact: true }).fill("Estante D2");
     await page.getByLabel("Fecha de ingreso").fill("2026-03-02T16:10");
@@ -239,42 +302,58 @@ test.describe("Ejemplar", () => {
     await capturar(page, info, "60-ejemplar-adicionar-validacion", true);
 
     await page.getByLabel("Número de préstamos").fill("0");
+    await page.getByLabel("Observaciones (opcional)").fill("Donado por un lector");
     await page.getByRole("button", { name: "Adicionar ejemplar" }).click();
     await esperarAviso(page, "Ejemplar adicionado");
     await capturar(page, info, "61-ejemplar-adicionar-exito");
-    const { ejemplarPorCodigo } = await graphql<{ ejemplarPorCodigo: { isbnLibro: string; numeroPrestamos: number } }>(
-      request, `query ($c: ID!) { ejemplarPorCodigo(codigo: $c) { isbnLibro numeroPrestamos } }`, { c: codigo }
+    const { ejemplarPorCodigo } = await graphql<{ ejemplarPorCodigo: Record<string, unknown> }>(
+      request, `query ($c: ID!) { ejemplarPorCodigo(codigo: $c) { isbnLibro numeroPrestamos observaciones libro { titulo } } }`, { c: codigo }
     );
-    expect(ejemplarPorCodigo).toEqual({ isbnLibro: "978-8420633121", numeroPrestamos: 0 });
+    expect(ejemplarPorCodigo).toEqual({
+      isbnLibro: "978-8420633121", numeroPrestamos: 0, observaciones: "Donado por un lector", libro: { titulo: "Ficciones" }
+    });
 
     // Libro inexistente: lo rechaza el servidor.
-    await page.getByLabel("Código del ejemplar").fill(`${codigo}-B`);
-    await page.getByLabel("ISBN del libro").fill("000-NO-EXISTE");
+    await page.getByLabel("Código del ejemplar").fill(codigoUnico(info));
+    await page.getByLabel("ISBN del libro").fill("978-0000000000");
+    await expect(page.getByText("No hay ningún libro con ese ISBN.")).toBeVisible();
     await page.getByLabel("Ubicación", { exact: true }).fill("Estante D2");
     await page.getByLabel("Fecha de ingreso").fill("2026-03-02T16:10");
     await page.getByLabel("Precio de reposición").fill("52000");
     await page.getByRole("button", { name: "Adicionar ejemplar" }).click();
-    await expect(page.getByRole("alert")).toContainText("000-NO-EXISTE");
+    await expect(page.getByRole("alert")).toContainText("No existe un libro con el ISBN 978-0000000000");
     await capturar(page, info, "62-ejemplar-adicionar-rechazo");
   });
 
-  test("consultar: encontrado y no encontrado", async ({ page }, info) => {
+  test("consultar: por código, por libro + ubicación, y no encontrado", async ({ page }, info) => {
     await page.goto("/ejemplares/consultar");
     await page.getByLabel("Código del ejemplar").fill("ej-007");
     await page.getByRole("button", { name: "Buscar" }).click();
     const ficha = page.getByRole("article", { name: "Ejemplar EJ-007" });
     await expect(ficha).toContainText("Dañado");
     await expect(ficha).toContainText("14/11/2023, 15:10");
+    await expect(ficha).toContainText("Lomo despegado");
+    await expect(ficha).toContainText("Jorge Isaacs");
     await capturar(page, info, "70-ejemplar-consultar", true);
 
     await page.getByLabel("Código del ejemplar").fill("EJ-999");
     await page.getByRole("button", { name: "Buscar" }).click();
     await expect(page.getByText("No hay ningún ejemplar con el código «EJ-999».")).toBeVisible();
     await capturar(page, info, "71-ejemplar-consultar-no-encontrado");
+
+    await page.getByText("Por libro y ubicación").click();
+    await page.getByLabel("ISBN del libro").fill("978-0307474728");
+    await page.getByLabel("Ubicación", { exact: true }).fill("estante a1");
+    await page.getByRole("button", { name: "Buscar" }).click();
+    await expect(page.getByText("3 ejemplares de ese libro en esa ubicación")).toBeVisible();
+    for (const codigo of ["EJ-001", "EJ-002", "EJ-004"]) {
+      await expect(page.getByRole("article", { name: `Ejemplar ${codigo}` })).toBeVisible();
+    }
+    await capturar(page, info, "72-ejemplar-consultar-libro-ubicacion");
   });
 
   test("actualizar: al pasar a Prestado el servidor suma un préstamo", async ({ page, request }, info) => {
-    const codigo = `EJ-E2E-${unico(info)}`;
+    const codigo = codigoUnico(info);
     await crearEjemplar(request, codigo, "978-0307474728", 4);
     await page.goto("/ejemplares/actualizar");
     await page.getByLabel("Código del ejemplar").fill(codigo);
@@ -283,6 +362,7 @@ test.describe("Ejemplar", () => {
     await expect(page.getByLabel("Número de préstamos")).toHaveValue("4");
     await expect(page.getByLabel("Número de préstamos")).toHaveAttribute("readonly", "");
     await elegir(page, "Estado", "Prestado");
+    await page.getByLabel("Observaciones (opcional)").fill("Prestado en la prueba E2E");
     await capturar(page, info, "80-ejemplar-actualizar-formulario", true);
     await page.getByRole("button", { name: "Guardar cambios" }).click();
 
@@ -290,16 +370,16 @@ test.describe("Ejemplar", () => {
     const guardado = page.getByRole("article", { name: `Ejemplar ${codigo}` });
     await expect(guardado).toContainText("Datos guardados");
     await expect(guardado).toContainText("Prestado");
-    await expect(guardado.getByText("5", { exact: true })).toBeVisible();
+    await expect(guardado).toContainText("Prestado en la prueba E2E");
     await capturar(page, info, "81-ejemplar-actualizar-guardado", true);
-    const { ejemplarPorCodigo } = await graphql<{ ejemplarPorCodigo: { numeroPrestamos: number } }>(
-      request, `query ($c: ID!) { ejemplarPorCodigo(codigo: $c) { numeroPrestamos } }`, { c: codigo }
+    const { ejemplarPorCodigo } = await graphql<{ ejemplarPorCodigo: { numeroPrestamos: number; version: number } }>(
+      request, `query ($c: ID!) { ejemplarPorCodigo(codigo: $c) { numeroPrestamos version } }`, { c: codigo }
     );
-    expect(ejemplarPorCodigo.numeroPrestamos).toBe(5);
+    expect(ejemplarPorCodigo).toEqual({ numeroPrestamos: 5, version: 1 });
   });
 
   test("eliminar: cancelar no borra y confirmar sí", async ({ page, request }, info) => {
-    const codigo = `EJ-E2E-${unico(info)}`;
+    const codigo = codigoUnico(info);
     await crearEjemplar(request, codigo, "978-9580469117", 0);
     await page.goto("/ejemplares/eliminar");
     await page.getByLabel("Código del ejemplar").fill(codigo);
@@ -323,21 +403,31 @@ test.describe("Ejemplar", () => {
     )).ejemplarPorCodigo).toBeNull();
   });
 
-  test("listar con cada filtro: el conteo es el del servidor", async ({ page, request }, info) => {
+  test("listar: todos los atributos + título y autor del libro, con filtros y paginación", async ({ page, request }, info) => {
     await page.goto("/ejemplares/listar");
-    await expect(page.getByRole("table", { name: "Ejemplares del inventario" })).toBeVisible();
+    const tabla = page.getByRole("table", { name: "Ejemplares del inventario" });
+    await expect(tabla).toBeVisible();
+    for (const columna of ["Código", "Título del libro", "Autor del libro", "Estado", "Ubicación", "Fecha de ingreso",
+      "Préstamos", "Reposición", "Observaciones", "Versión", "ID (_id)", "ID del libro (libroId)"]) {
+      await expect(tabla.getByRole("columnheader", { name: columna, exact: true })).toBeAttached();
+    }
+    await expect(tabla.getByRole("cell", { name: "Cien años de soledad" }).first()).toBeVisible();
     await capturar(page, info, "95-ejemplar-listar");
 
     const total = async (estado: string | null, isbn: string | null) =>
-      (await graphql<{ totalEjemplaresFiltrados: number }>(
+      (await graphql<{ ejemplaresConLibro: PaginaTotal }>(
         request,
-        `query ($e: EstadoEjemplar, $i: String) { totalEjemplaresFiltrados(estado: $e, isbnLibro: $i) }`,
+        `query ($e: EstadoEjemplar, $i: String) { ejemplaresConLibro(estado: $e, isbn: $i) { totalElementos } }`,
         { e: estado, i: isbn }
-      )).totalEjemplaresFiltrados;
+      )).ejemplaresConLibro.totalElementos;
     const conteo = (n: number) => (n === 1 ? "1 ejemplar" : `${n} ejemplares`);
 
+    await expect(page.getByText(conteo(await total(null, null)), { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Página siguiente" }).click();
+    await expect(page.getByText(/Página 2 de \d+/)).toBeVisible();
+
     for (const [texto, valor] of [["Disponible", "DISPONIBLE"], ["Prestado", "PRESTADO"], ["Dañado", "DANIADO"], ["Dado de baja", "DADO_DE_BAJA"]]) {
-      await page.getByText(texto, { exact: true }).first().click();
+      await page.getByRole("radio", { name: texto, exact: true }).click({ force: true });
       await expect(page.getByText(conteo(await total(valor, null)), { exact: true })).toBeVisible();
     }
     await capturar(page, info, "96-ejemplar-listar-estado");
@@ -345,7 +435,7 @@ test.describe("Ejemplar", () => {
     await page.getByLabel("ISBN del libro").fill("978-0307474728");
     await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page.getByText(conteo(await total("DADO_DE_BAJA", "978-0307474728")), { exact: true })).toBeVisible();
-    await page.getByText("Todos", { exact: true }).click();
+    await page.getByRole("radio", { name: "Todos", exact: true }).click({ force: true });
     await expect(page.getByText(conteo(await total(null, "978-0307474728")), { exact: true })).toBeVisible();
     await capturar(page, info, "97-ejemplar-listar-isbn");
   });

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -26,6 +27,8 @@ import java.util.Map;
  * 12 libros y 20 ejemplares (10 disponibles, 6 prestados, 2 dañados y 2 dados de baja).
  * "Delirio" no tiene ejemplares: es el libro que sí se puede eliminar en la demostración.
  * Con el perfil "carga" además genera 1.000 libros y 5.000 ejemplares si todavía no existen.
+ * Con libreria.datos-iniciales.reiniciar=true (solo las pruebas E2E, por línea de comandos) primero
+ * vacía las colecciones, para que cada corrida empiece con los mismos datos.
  */
 @Component
 public class DatosIniciales implements ApplicationRunner {
@@ -35,17 +38,23 @@ public class DatosIniciales implements ApplicationRunner {
     private final LibroRepository libros;
     private final EjemplarRepository ejemplares;
     private final GeneradorDatosCarga generador;
+    private final MongoTemplate mongo;
     private final boolean habilitado;
     private final boolean generarCarga;
+    private final boolean reiniciar;
 
     public DatosIniciales(LibroRepository libros, EjemplarRepository ejemplares, GeneradorDatosCarga generador,
+                          MongoTemplate mongo,
                           @Value("${libreria.datos-iniciales.habilitado:true}") boolean habilitado,
-                          @Value("${libreria.carga.generar-al-iniciar:false}") boolean generarCarga) {
+                          @Value("${libreria.carga.generar-al-iniciar:false}") boolean generarCarga,
+                          @Value("${libreria.datos-iniciales.reiniciar:false}") boolean reiniciar) {
         this.libros = libros;
         this.ejemplares = ejemplares;
         this.generador = generador;
+        this.mongo = mongo;
         this.habilitado = habilitado;
         this.generarCarga = generarCarga;
+        this.reiniciar = reiniciar;
     }
 
     @Override
@@ -54,6 +63,17 @@ public class DatosIniciales implements ApplicationRunner {
             return;
         }
         try {
+            if (reiniciar) {
+                if (!"libreria_e2e".equals(mongo.getDb().getName())) {
+                    log.warn("Se pidió reiniciar la base {}, pero solo se permite con libreria_e2e: no se borra nada",
+                            mongo.getDb().getName());
+                } else {
+                    log.warn("Reiniciando la base {}: se borran libros, ejemplares y revisiones", mongo.getDb().getName());
+                    for (String coleccion : List.of("libros", "ejemplares", "revisiones")) {
+                        mongo.getCollection(coleccion).deleteMany(new org.bson.Document());
+                    }
+                }
+            }
             if (libros.count() == 0) {
                 cargarDatosDePrueba();
             } else {

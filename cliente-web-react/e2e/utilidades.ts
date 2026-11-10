@@ -7,7 +7,7 @@ const AQUI = path.dirname(fileURLToPath(import.meta.url));
 export const URL_GRAPHQL = "http://localhost:8081/graphql";
 
 /** Carpeta de capturas (fuera del repositorio). Se puede cambiar con CAPTURAS_DIR. */
-const CAPTURAS = process.env.CAPTURAS_DIR ?? path.resolve(AQUI, "../../../Capturas-SegundoProyecto-Libreria/web");
+const CAPTURAS = process.env.CAPTURAS_DIR ?? path.resolve(AQUI, "../../../Capturas-TercerPrototipo-Libreria/web");
 
 /** Guarda una captura de la pantalla actual: <capturas>/<escritorio|celular>/<nombre>.png */
 export async function capturar(page: Page, info: TestInfo, nombre: string, completa = false) {
@@ -32,11 +32,27 @@ export function unico(info: TestInfo): string {
   return `${info.project.name === "celular" ? "C" : "E"}${Date.now().toString().slice(-7)}`;
 }
 
-export async function crearLibro(request: APIRequestContext, isbn: string, titulo = "Libro de prueba E2E") {
+let contador = 0;
+
+/** ISBN-13 válido y único (979-5 para escritorio, 979-6 para celular). */
+export function isbnUnico(info: TestInfo): string {
+  contador++;
+  const numero = (Date.now() % 1_000_000) * 100 + (contador % 100);
+  return `979-${info.project.name === "celular" ? "6" : "5"}${String(numero).padStart(9, "0").slice(-9)}`;
+}
+
+/** Código de ejemplar válido (EJ- y 6 dígitos) y único. */
+export function codigoUnico(info: TestInfo): string {
+  contador++;
+  const numero = ((Date.now() % 10_000) * 10 + (contador % 10)) % 100_000;
+  return `EJ-${info.project.name === "celular" ? "8" : "7"}${String(numero).padStart(5, "0")}`;
+}
+
+export async function crearLibro(request: APIRequestContext, isbn: string, titulo = "Libro de prueba E2E", precio = 50000) {
   await graphql(request, `mutation ($input: LibroInput!) { crearLibro(input: $input) { isbn } }`, {
     input: {
-      isbn, titulo, autor: "Autora E2E", precio: 50000, numeroPaginas: 200,
-      fechaPublicacion: "2020-05-10T08:30:00", genero: "FICCION"
+      isbn, titulo, autor: "Autora E2E", precio, numeroPaginas: 200,
+      fechaPublicacion: "2020-05-10T08:30:00", genero: "FICCION", editorial: "Editorial E2E"
     }
   });
 }

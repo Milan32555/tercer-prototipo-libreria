@@ -126,7 +126,7 @@ export default function ActualizarLibro() {
         {!libro && !guardado && (
           <BuscadorClave etiqueta="ISBN del libro" placeholder="978-0307474728" cargando={cargando} alBuscar={buscar} />
         )}
-        {error && <Banner titulo={libro ? "No se pudieron guardar los cambios" : "No se pudo buscar el libro"}>{error}</Banner>}
+        {error && !libro && <Banner titulo="No se pudo buscar el libro">{error}</Banner>}
         {sinResultado && <SinResultados titulo="Sin resultados">{sinResultado}</SinResultados>}
 
         {guardado && (
@@ -163,6 +163,13 @@ export default function ActualizarLibro() {
                              error={errores.sinopsis} maximo={500} />
                 </div>
               </section>
+              {/* Junto a los botones: el usuario está al final del formulario y debe ver el rechazo
+                  (por ejemplo, el conflicto de versión) sin tener que subir. */}
+              {error && (
+                <div className="seccion-formulario-error">
+                  <Banner titulo="No se pudieron guardar los cambios">{error}</Banner>
+                </div>
+              )}
               <div className="acciones acciones-pie">
                 <Boton onClick={reiniciar}>Cancelar</Boton>
                 <Boton type="submit" variante="primario" icono={Save} cargando={cargando}>Guardar cambios</Boton>

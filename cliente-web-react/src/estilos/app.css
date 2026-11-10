@@ -1594,3 +1594,8 @@ main:focus {
     flex: 1 1 120px;
   }
 }
+
+/* Rechazo del servidor al guardar: se muestra junto a los botones del formulario. */
+.seccion-formulario-error {
+  padding: 0 var(--esp-4) var(--esp-4);
+}
