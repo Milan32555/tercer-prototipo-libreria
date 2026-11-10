@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mongo:
-        image: mongo:8.0
+        image: mongo:8.2  # 8.0 no arranca en el kernel Linux 6.19+ de los runners (SERVER-121912)
         ports:
           - 27017:27017
         options: >-
