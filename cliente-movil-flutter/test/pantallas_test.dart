@@ -349,8 +349,9 @@ void main() {
       await escribir(tester, 'Número de páginas', '129');
       await escribir(tester, 'Editorial (opcional)', ' Fondo de Cultura Económica ');
       await elegir(tester, 'Género', 'No ficción');
-      await elegirFechaYHora(tester, hora: '14', minuto: '30');
-      expect(find.textContaining(' 14:30'), findsOneWidget); // el campo muestra fecha y hora
+      // Hoy a las 00:00: nunca queda en el futuro, corra la prueba a la hora que corra.
+      await elegirFechaYHora(tester, hora: '00', minuto: '00');
+      expect(find.textContaining(' 00:00'), findsOneWidget); // el campo muestra fecha y hora
       await tocar(tester, find.widgetWithText(FilledButton, 'Adicionar libro'));
 
       final hoy = DateTime.now();
@@ -363,7 +364,7 @@ void main() {
       expect(input['sinopsis'], isNull);
       expect(
         input['fechaPublicacion'],
-        '${hoy.year}-${'${hoy.month}'.padLeft(2, '0')}-${'${hoy.day}'.padLeft(2, '0')}T14:30:00',
+        '${hoy.year}-${'${hoy.month}'.padLeft(2, '0')}-${'${hoy.day}'.padLeft(2, '0')}T00:00:00',
       );
       expect(find.text('Libro adicionado: «Pedro Páramo».'), findsOneWidget);
     });
