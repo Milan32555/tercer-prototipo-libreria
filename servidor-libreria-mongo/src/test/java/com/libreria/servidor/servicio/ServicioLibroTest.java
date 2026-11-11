@@ -64,7 +64,7 @@ class ServicioLibroTest extends PruebaBase {
         assertThatThrownBy(() -> servicio.crear(malo))
                 .isInstanceOf(ConstraintViolationException.class)
                 .satisfies(e -> assertThat(ManejadorErrores.mensajeValidacion((ConstraintViolationException) e))
-                        .contains("El ISBN debe tener 10 o 13 dígitos")
+                        .contains("El ISBN debe tener de 1 a 4 dígitos")
                         .contains("El título es obligatorio.")
                         .contains("El autor es obligatorio.")
                         .contains("El precio debe ser mayor que cero.")
@@ -75,12 +75,15 @@ class ServicioLibroTest extends PruebaBase {
     }
 
     @Test
-    void aceptaIsbn10ConXYIsbn13SinGuiones() {
-        servicio.crear(libro("0-306-40615-X", "ISBN 10"));
-        servicio.crear(libro("9780306406157", "ISBN 13"));
+    void aceptaIsbnDeUnoACuatroDigitosYRechazaMasLargos() {
+        servicio.crear(libro("7", "ISBN de 1 dígito"));
+        servicio.crear(libro("2024", "ISBN de 4 dígitos"));
 
-        assertThat(servicio.buscarPorIsbn("0-306-40615-X")).isPresent();
-        assertThat(servicio.buscarPorIsbn("9780306406157")).isPresent();
+        assertThat(servicio.buscarPorIsbn("7")).isPresent();
+        assertThat(servicio.buscarPorIsbn(" 2024 ")).isPresent();
+        assertThatThrownBy(() -> servicio.crear(libro("12345", "Cinco dígitos")))
+                .isInstanceOf(ConstraintViolationException.class)
+                .hasMessageContaining("El ISBN debe tener de 1 a 4 dígitos");
     }
 
     @Test
@@ -89,7 +92,7 @@ class ServicioLibroTest extends PruebaBase {
 
         assertThatThrownBy(() -> servicio.crear(libro(" " + ISBN_CIEN + " ", "Otro")))
                 .isInstanceOf(LibreriaException.class)
-                .hasMessage("Ya existe un libro con el ISBN 978-0307474728.")
+                .hasMessage("Ya existe un libro con el ISBN 1001.")
                 .extracting(e -> ((LibreriaException) e).getTipo()).isEqualTo(LibreriaException.Tipo.DUPLICADO);
     }
 
@@ -101,7 +104,7 @@ class ServicioLibroTest extends PruebaBase {
         assertThat(servicio.buscarPorTitulo("MARIA")).map(Libro::getIsbn).contains(ISBN_MARIA);
         assertThat(servicio.buscarPorTitulo("maría ")).isPresent();
         assertThat(servicio.buscarPorTitulo("Mar")).isEmpty();
-        assertThat(servicio.buscarPorIsbn("978-0000000000")).isEmpty();
+        assertThat(servicio.buscarPorIsbn("9999")).isEmpty();
         assertThat(servicio.buscarPorIsbn("  ")).isEmpty();
     }
 
@@ -146,7 +149,7 @@ class ServicioLibroTest extends PruebaBase {
     void actualizarUnLibroQueNoExiste() {
         assertThatThrownBy(() -> servicio.actualizar(libro(ISBN_CIEN, "No existe")))
                 .isInstanceOf(LibreriaException.class)
-                .hasMessage("No existe un libro con el ISBN 978-0307474728.");
+                .hasMessage("No existe un libro con el ISBN 1001.");
     }
 
     @Test
@@ -157,7 +160,7 @@ class ServicioLibroTest extends PruebaBase {
 
         assertThat(eliminado.getTitulo()).isEqualTo("Cien años de soledad");
         assertThat(servicio.buscarPorIsbn(ISBN_CIEN)).isEmpty();
-        assertThatThrownBy(() -> servicio.eliminar(ISBN_CIEN)).hasMessage("No existe un libro con el ISBN 978-0307474728.");
+        assertThatThrownBy(() -> servicio.eliminar(ISBN_CIEN)).hasMessage("No existe un libro con el ISBN 1001.");
     }
 
     @Test
@@ -167,14 +170,14 @@ class ServicioLibroTest extends PruebaBase {
 
         assertThatThrownBy(() -> servicio.eliminar(ISBN_CIEN))
                 .isInstanceOf(LibreriaException.class)
-                .hasMessage("No se puede eliminar el libro 978-0307474728 porque tiene 1 ejemplar(es) registrado(s). "
+                .hasMessage("No se puede eliminar el libro 1001 porque tiene 1 ejemplar(es) registrado(s). "
                         + "Elimine primero sus ejemplares.");
     }
 
     @Test
     void listarEsPaginadoYOrdenadoPorTitulo() {
         for (int i = 1; i <= 25; i++) {
-            servicio.crear(libro(String.format("978-00000000%02d", i), String.format("Libro %02d", i)));
+            servicio.crear(libro(String.format("20%02d", i), String.format("Libro %02d", i)));
         }
 
         Pagina<Libro> primera = servicio.listar(0, 10);
@@ -190,10 +193,10 @@ class ServicioLibroTest extends PruebaBase {
 
     @Test
     void consultaPersonalizadaPorPrecioYGenero() {
-        crear("978-0000000001", "Barato", 20000, Genero.FICCION);
-        crear("978-0000000002", "Medio", 50000, Genero.FICCION);
-        crear("978-0000000003", "Medio historia", 55000, Genero.HISTORIA);
-        crear("978-0000000004", "Caro", 90000, Genero.FICCION);
+        crear("2001", "Barato", 20000, Genero.FICCION);
+        crear("2002", "Medio", 50000, Genero.FICCION);
+        crear("2003", "Medio historia", 55000, Genero.HISTORIA);
+        crear("2004", "Caro", 90000, Genero.FICCION);
 
         assertThat(servicio.listarPorPrecioYGenero(40000.0, 60000.0, Genero.FICCION, 0, 10).contenido())
                 .extracting(Libro::getTitulo).containsExactly("Medio");
@@ -223,7 +226,7 @@ class ServicioLibroTest extends PruebaBase {
         assertThat(detalle.conteoPorEstado()).hasSize(4);
         assertThat(detalle.conteoPorEstado().get(0).cantidad()).isEqualTo(1);
         assertThat(detalle.conteoPorEstado().get(1).porcentaje()).isEqualTo(50.0);
-        assertThat(servicio.detalle("978-0000000000")).isEmpty();
+        assertThat(servicio.detalle("9999")).isEmpty();
     }
 
     private void crear(String isbn, String titulo, double precio, Genero genero) {

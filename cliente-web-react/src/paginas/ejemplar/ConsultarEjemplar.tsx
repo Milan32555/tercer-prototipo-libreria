@@ -92,7 +92,7 @@ export default function ConsultarEjemplar() {
         ) : (
           <form className="panel barra-filtros" role="search" onSubmit={buscarPorLibro} noValidate>
             {selectorCriterio}
-            <Campo className="campo-busqueda" etiqueta="ISBN del libro" value={isbn} placeholder="978-0307474728"
+            <Campo className="campo-busqueda" etiqueta="ISBN del libro" value={isbn} placeholder="1001"
                    onChange={(e) => { setIsbn(e.target.value); setErrores((x) => ({ ...x, isbn: undefined })); }}
                    error={errores.isbn} autoComplete="off" />
             <Campo className="campo-busqueda" etiqueta="Ubicación" value={ubicacion} placeholder="Estante A1"

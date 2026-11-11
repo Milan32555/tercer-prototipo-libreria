@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * Escribe en la consola del servidor una línea por cada operación GraphQL que llega:
  * la hora, qué cliente la hizo (encabezado {@code X-Cliente}), si es consulta o mutación,
  * los campos pedidos y los datos clave. Ejemplo:
- * <pre>12:41:05  App móvil    | mutación crearLibro (isbn=978-1, titulo=Pedro Páramo)</pre>
+ * <pre>12:41:05  App móvil    | mutación crearLibro (isbn=1008, titulo=Pedro Páramo)</pre>
  *
  * Las consultas de revisión que el Observer de los clientes hace cada 15 s no se registran
  * (llenarían la consola); se pueden incluir con {@code libreria.registro.incluir-revisiones=true}.

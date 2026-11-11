@@ -15,14 +15,14 @@ vi.mock("../../graphql/servicioLibro", async (importOriginal) => ({
 }));
 
 const MARIA: Libro = {
-  isbn: "978-9589012338", titulo: "María", autor: "Jorge Isaacs",
+  isbn: "1004", titulo: "María", autor: "Jorge Isaacs",
   precio: 39000, numeroPaginas: 340, fechaPublicacion: "1867-01-01T08:15:00", genero: "FICCION",
   id: "6af377e075da53cd0c59caa1", editorial: null, sinopsis: "Efraín regresa al Valle del Cauca.", version: 3
 };
 
 async function buscar() {
   const resultado = renderizar(<ActualizarLibro />);
-  await resultado.user.type(screen.getByLabelText("ISBN del libro"), "978-9589012338");
+  await resultado.user.type(screen.getByLabelText("ISBN del libro"), "1004");
   await resultado.user.click(screen.getByRole("button", { name: "Buscar" }));
   await screen.findByText("Datos actuales");
   return resultado.user;
@@ -35,7 +35,7 @@ describe("ActualizarLibro", () => {
     await buscar();
 
     const ficha = screen.getByRole("article", { name: "Libro María" });
-    expect(within(ficha).getByText("978-9589012338")).toBeInTheDocument();
+    expect(within(ficha).getByText("1004")).toBeInTheDocument();
     expect(within(ficha).getByText(/01\/01\/1867.*08:15/)).toBeInTheDocument();
     expect(screen.getByLabelText("Título")).toHaveValue("María");
     expect(screen.getByLabelText("Autor")).toHaveValue("Jorge Isaacs");
@@ -64,7 +64,7 @@ describe("ActualizarLibro", () => {
 
     expect(await screen.findByText("Cambios guardados")).toBeInTheDocument();
     expect(actualizarLibro).toHaveBeenCalledWith({
-      isbn: "978-9589012338", titulo: "María", autor: "Jorge Isaacs", precio: 41000, numeroPaginas: 340,
+      isbn: "1004", titulo: "María", autor: "Jorge Isaacs", precio: 41000, numeroPaginas: 340,
       fechaPublicacion: "1867-06-01T09:00", genero: "POESIA",
       editorial: null, sinopsis: "Efraín regresa al Valle del Cauca.", version: 3
     });

@@ -57,7 +57,7 @@ export default function DetalleLibro() {
         descripcion="Un libro (maestro) con todos sus ejemplares (detalle) y cuántos hay en cada estado."
       />
       <div className="pila">
-        <BuscadorClave etiqueta="ISBN del libro" placeholder="978-0307474728" cargando={cargando} alBuscar={buscar} />
+        <BuscadorClave etiqueta="ISBN del libro" placeholder="1001" cargando={cargando} alBuscar={buscar} />
         {error && <Banner titulo="No se pudo consultar">{error}</Banner>}
         {sinResultado && <SinResultados titulo="Sin resultados">{sinResultado}</SinResultados>}
         {detalle && (

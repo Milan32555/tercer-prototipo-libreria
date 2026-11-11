@@ -15,7 +15,7 @@ vi.mock("../../graphql/servicioEjemplar", () => ({
 
 const EJ_020: Ejemplar = {
   codigo: "EJ-020", estado: "DADO_DE_BAJA", ubicacion: "Bodega", fechaIngreso: "2021-09-08T09:30:00",
-  precioReposicion: 79000, numeroPrestamos: 14, isbnLibro: "978-8432311451"
+  precioReposicion: 79000, numeroPrestamos: 14, isbnLibro: "1012"
 };
 
 async function buscar() {

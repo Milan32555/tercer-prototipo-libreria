@@ -19,7 +19,7 @@ void main() {
     test('Libro se construye desde el JSON del servidor', () {
       final libro = Libro.desdeJson(libroJson(precio: 55000));
 
-      expect(libro.isbn, '978-8420401751');
+      expect(libro.isbn, '1003');
       expect(libro.precio, 55000.0); // un entero del JSON se convierte a double
       expect(libro.numeroPaginas, 352);
       expect(libro.genero, 'FICCION');
@@ -31,7 +31,7 @@ void main() {
       expect(ejemplar.codigo, 'EJ-001');
       expect(ejemplar.precioReposicion, 65000.5);
       expect(ejemplar.numeroPrestamos, 7);
-      expect(ejemplar.isbnLibro, '978-0307474728');
+      expect(ejemplar.isbnLibro, '1001');
     });
 
     test('ResumenInventario se construye desde el JSON del servidor', () {
@@ -224,10 +224,10 @@ void main() {
       expect(validarEnteroPositivo('-3'), 'Debe ser mayor que cero.');
       expect(validarEnteroPositivo('120'), isNull);
       // Las mismas reglas de formato que el servidor y el cliente web.
-      expect(validarIsbn('978-0307474728'), isNull);
-      expect(validarIsbn('0-306-40615-X'), isNull);
-      expect(validarIsbn('978-030747472'), 'El ISBN debe tener 10 o 13 dígitos (se permiten guiones).');
-      expect(validarIsbn('978--0307474728'), isNotNull);
+      expect(validarIsbn('1001'), isNull);
+      expect(validarIsbn('7'), isNull);
+      expect(validarIsbn('12345'), 'El ISBN debe tener de 1 a 4 dígitos (solo números).');
+      expect(validarIsbn('10-01'), isNotNull);
       expect(validarCodigoEjemplar('ej-001'), isNull);
       expect(validarCodigoEjemplar('EJ-1'), 'Usa el formato EJ-000 (EJ- y de 3 a 6 dígitos).');
       final ahora = DateTime(2026, 11, 10, 12);

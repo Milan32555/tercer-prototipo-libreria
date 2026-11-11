@@ -98,7 +98,7 @@ class _ConsultarLibroState extends State<ConsultarLibro> {
           BuscadorClave(
             controller: _valor,
             etiqueta: porIsbn ? 'ISBN' : 'Título',
-            pista: porIsbn ? '978-0307474728' : 'Cien años de soledad',
+            pista: porIsbn ? '1001' : 'Cien años de soledad',
             onBuscar: _buscar,
             cargando: _cargando,
           ),

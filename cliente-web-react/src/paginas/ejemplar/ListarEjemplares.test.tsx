@@ -14,7 +14,7 @@ vi.mock("../../graphql/servicioEjemplar", () => ({
 
 const EJ_004: EjemplarConLibro = {
   id: "6af377e075da53cd0c59cab3", codigo: "EJ-004", libroId: "6af377e075da53cd0c59ca9f",
-  isbnLibro: "978-0307474728", tituloLibro: "Cien años de soledad", autorLibro: "Gabriel García Márquez",
+  isbnLibro: "1001", tituloLibro: "Cien años de soledad", autorLibro: "Gabriel García Márquez",
   estado: "PRESTADO", ubicacion: "Estante A1", fechaIngreso: "2025-01-15T10:20:00", precioReposicion: 65000,
   numeroPrestamos: 6, observaciones: "Edición conmemorativa", version: 1
 };
@@ -53,9 +53,9 @@ describe("ListarEjemplares", () => {
     const { user } = renderizar(<ListarEjemplares />);
     await screen.findByText("EJ-004");
 
-    await user.type(screen.getByLabelText("ISBN del libro"), "978-0307474728");
+    await user.type(screen.getByLabelText("ISBN del libro"), "1001");
     await user.click(screen.getByRole("radio", { name: "Prestado" }));
-    await waitFor(() => expect(listarEjemplaresConLibro).toHaveBeenLastCalledWith("PRESTADO", "978-0307474728", 0, 10));
+    await waitFor(() => expect(listarEjemplaresConLibro).toHaveBeenLastCalledWith("PRESTADO", "1001", 0, 10));
 
     await user.click(screen.getByRole("button", { name: "Limpiar filtros" }));
     await waitFor(() => expect(listarEjemplaresConLibro).toHaveBeenLastCalledWith("", "", 0, 10));

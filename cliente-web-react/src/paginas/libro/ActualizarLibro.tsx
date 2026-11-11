@@ -124,7 +124,7 @@ export default function ActualizarLibro() {
 
       <div className="pila">
         {!libro && !guardado && (
-          <BuscadorClave etiqueta="ISBN del libro" placeholder="978-0307474728" cargando={cargando} alBuscar={buscar} />
+          <BuscadorClave etiqueta="ISBN del libro" placeholder="1001" cargando={cargando} alBuscar={buscar} />
         )}
         {error && !libro && <Banner titulo="No se pudo buscar el libro">{error}</Banner>}
         {sinResultado && <SinResultados titulo="Sin resultados">{sinResultado}</SinResultados>}

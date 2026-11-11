@@ -119,7 +119,7 @@ class _ConsultarEjemplarState extends State<ConsultarEjemplar> {
                 children: [
                   TextFormField(
                     controller: _isbn,
-                    decoration: const InputDecoration(labelText: 'ISBN del libro', hintText: '978-0307474728'),
+                    decoration: const InputDecoration(labelText: 'ISBN del libro', hintText: '1001'),
                     autocorrect: false,
                     validator: validarObligatorio,
                   ),

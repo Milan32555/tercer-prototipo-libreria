@@ -144,7 +144,7 @@ class _ActualizarLibroState extends State<ActualizarLibro> {
               BuscadorClave(
                 controller: _isbnBusqueda,
                 etiqueta: 'ISBN del libro',
-                pista: '978-0307474728',
+                pista: '1001',
                 onBuscar: _buscar,
                 cargando: _cargando,
               ),

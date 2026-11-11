@@ -18,7 +18,7 @@ vi.mock("../../graphql/servicioLibro", async (importOriginal) => ({
 }));
 
 const CIEN_ANOS = {
-  isbn: "978-0307474728", titulo: "Cien años de soledad", autor: "Gabriel García Márquez", precio: 65000,
+  isbn: "1001", titulo: "Cien años de soledad", autor: "Gabriel García Márquez", precio: 65000,
   numeroPaginas: 496, fechaPublicacion: "1967-05-30T00:00:00", genero: "FICCION" as const
 };
 
@@ -27,7 +27,7 @@ async function llenarFormulario(prestamos: string) {
   const resultado = renderizar(<AgregarEjemplar />);
   const { user } = resultado;
   await user.type(screen.getByLabelText("Código del ejemplar"), "EJ-100");
-  await user.type(screen.getByLabelText("ISBN del libro"), "978-0307474728");
+  await user.type(screen.getByLabelText("ISBN del libro"), "1001");
   await user.type(screen.getByLabelText("Ubicación"), "Estante C3");
   fireEvent.change(screen.getByLabelText("Fecha de ingreso"), { target: { value: "2024-05-10T14:30" } });
   await user.type(screen.getByLabelText("Precio de reposición"), "45000");
@@ -52,7 +52,7 @@ describe("AgregarEjemplar", () => {
     expect(await screen.findByText("Ejemplar adicionado")).toBeInTheDocument();
     expect(screen.getByText("EJ-100 quedó registrado para «Cien años de soledad».")).toBeInTheDocument();
     expect(crearEjemplar).toHaveBeenCalledWith({
-      codigo: "EJ-100", isbnLibro: "978-0307474728", estado: "PRESTADO", ubicacion: "Estante C3",
+      codigo: "EJ-100", isbnLibro: "1001", estado: "PRESTADO", ubicacion: "Estante C3",
       fechaIngreso: "2024-05-10T14:30", precioReposicion: 45000, numeroPrestamos: 3, observaciones: null
     });
     expect(notificar).toHaveBeenCalledTimes(1);
@@ -71,7 +71,7 @@ describe("AgregarEjemplar", () => {
     vi.mocked(buscarLibroPorIsbn).mockResolvedValue(null);
     const { user } = renderizar(<AgregarEjemplar />);
 
-    await user.type(screen.getByLabelText("ISBN del libro"), "978-0000000000");
+    await user.type(screen.getByLabelText("ISBN del libro"), "9999");
     expect(await screen.findByText("No hay ningún libro con ese ISBN.")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Código del ejemplar"), "X-1");
@@ -81,11 +81,11 @@ describe("AgregarEjemplar", () => {
   });
 
   it("muestra el rechazo del servidor y conserva los datos", async () => {
-    vi.mocked(crearEjemplar).mockRejectedValue(new ErrorGraphQL("No existe un libro con el ISBN 978-0307474728."));
+    vi.mocked(crearEjemplar).mockRejectedValue(new ErrorGraphQL("No existe un libro con el ISBN 1001."));
 
     await llenarFormulario("2");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No existe un libro con el ISBN 978-0307474728.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("No existe un libro con el ISBN 1001.");
     expect(screen.getByLabelText("Código del ejemplar")).toHaveValue("EJ-100");
   });
 });

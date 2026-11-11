@@ -93,7 +93,7 @@ class _AgregarLibroState extends State<AgregarLibro> {
               children: [
                 TextFormField(
                   controller: _isbn,
-                  decoration: const InputDecoration(labelText: 'ISBN', hintText: '978-0307474728'),
+                  decoration: const InputDecoration(labelText: 'ISBN', hintText: '1001'),
                   autocorrect: false, // es un código: sin autocorrección ni sugerencias
                   enableSuggestions: false,
                   textInputAction: TextInputAction.next,

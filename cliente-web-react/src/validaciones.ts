@@ -34,15 +34,11 @@ export function validarFecha(valor: string): string | null {
   return valor.trim() === "" ? "Elige la fecha y la hora." : null;
 }
 
-/** ISBN-10 o ISBN-13: solo dígitos y guiones (el ISBN-10 puede terminar en X). */
+/** ISBN: código corto de 1 a 4 dígitos, solo números (igual que el servidor). */
 export function validarIsbn(valor: string): string | null {
   const texto = valor.trim();
   if (texto === "") return "Este campo es obligatorio.";
-  const digitos = texto.replace(/-/g, "");
-  const formato = /^\d[\d-]*[\dXx]$/.test(texto) && !texto.includes("--");
-  return formato && /^(\d{9}[\dXx]|\d{13})$/.test(digitos)
-    ? null
-    : "El ISBN debe tener 10 o 13 dígitos (se permiten guiones).";
+  return /^\d{1,4}$/.test(texto) ? null : "El ISBN debe tener de 1 a 4 dígitos (solo números).";
 }
 
 /** Código del ejemplar: EJ- seguido de 3 a 6 dígitos (EJ-000). */

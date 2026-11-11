@@ -12,8 +12,8 @@ const _url = String.fromEnvironment('URL_GRAPHQL');
 
 void main() {
   final sufijo = DateTime.now().millisecondsSinceEpoch;
-  // ISBN-13 y código EJ-000 válidos y distintos en cada ejecución.
-  final isbn = '979-8${(sufijo % 1000000000).toString().padLeft(9, '0')}';
+  // ISBN de 4 dígitos y código EJ-000 válidos y distintos en cada ejecución.
+  final isbn = '${7000 + sufijo % 1000}';
   final codigo = 'EJ-${900000 + sufijo % 99999}';
 
   test(

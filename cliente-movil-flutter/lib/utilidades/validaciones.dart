@@ -35,15 +35,11 @@ String? validarEnteroNoNegativo(String? valor) {
 
 String? validarFecha(DateTime? valor) => valor == null ? 'Elige la fecha y la hora.' : null;
 
-/// ISBN-10 o ISBN-13: solo dígitos y guiones (el ISBN-10 puede terminar en X).
+/// ISBN: código corto de 1 a 4 dígitos, solo números (igual que el servidor).
 String? validarIsbn(String? valor) {
   final texto = valor?.trim() ?? '';
   if (texto.isEmpty) return _obligatorio;
-  final digitos = texto.replaceAll('-', '');
-  final formato = RegExp(r'^\d[\d-]*[\dXx]$').hasMatch(texto) && !texto.contains('--');
-  return formato && RegExp(r'^(\d{9}[\dXx]|\d{13})$').hasMatch(digitos)
-      ? null
-      : 'El ISBN debe tener 10 o 13 dígitos (se permiten guiones).';
+  return RegExp(r'^\d{1,4}$').hasMatch(texto) ? null : 'El ISBN debe tener de 1 a 4 dígitos (solo números).';
 }
 
 /// Código del ejemplar: EJ- seguido de 3 a 6 dígitos (EJ-000).

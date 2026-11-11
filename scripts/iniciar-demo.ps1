@@ -3,6 +3,7 @@
 #   1. Servidor GraphQL (Java + Spring Data MongoDB) en el puerto 8081
 #   2. Cliente web (React) en http://localhost:5173 y lo abre en el navegador
 #   3. App Flutter en el celular conectado por USB (adb reverse + instalar + abrir)
+#   4. Ventana con los logs del servidor en vivo (operaciones de la web y la app)
 #
 # Se puede ejecutar varias veces: lo que ya esta corriendo no se vuelve a lanzar.
 # Si se desconecta el cable del celular, basta con volver a ejecutarlo.
@@ -25,8 +26,18 @@ function Bien($texto)  { Write-Host "    OK  $texto" -ForegroundColor Green }
 function Aviso($texto) { Write-Host "    !!  $texto" -ForegroundColor Yellow }
 function Falla($texto) { Write-Host "    XX  $texto" -ForegroundColor Red }
 
+# Prueba directa de conexion al puerto (Get-NetTCPConnection falla en algunos equipos).
+# Se prueban IPv4 e IPv6 porque Vite puede escuchar solo en ::1.
 function Escuchando($puerto) {
-    $null -ne (Get-NetTCPConnection -LocalPort $puerto -State Listen -ErrorAction SilentlyContinue)
+    foreach ($direccion in @('127.0.0.1', '::1')) {
+        $familia = if ($direccion -eq '::1') { 'InterNetworkV6' } else { 'InterNetwork' }
+        $cliente = New-Object System.Net.Sockets.TcpClient($familia)
+        try {
+            $intento = $cliente.BeginConnect($direccion, $puerto, $null, $null)
+            if ($intento.AsyncWaitHandle.WaitOne(400) -and $cliente.Connected) { return $true }
+        } catch { } finally { $cliente.Close() }
+    }
+    return $false
 }
 
 function ServidorResponde {
@@ -111,6 +122,36 @@ if (ServidorResponde) {
 }
 
 # --------------------------------------------------------------------------------------------
+Paso 'Logs del servidor (en vivo)'
+
+$visorLogs = Join-Path $PSScriptRoot 'ver-logs.ps1'
+try {
+    Start-Process powershell.exe -WorkingDirectory $servidor -ErrorAction Stop `
+        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$visorLogs`""
+    Bien 'ventana Logs Libreria abierta (web y app)'
+} catch {
+    Aviso "no se pudo abrir el visor de logs: $($_.Exception.Message)"
+}
+
+# --------------------------------------------------------------------------------------------
+Paso 'MongoDB Compass (ver las colecciones)'
+
+$uriMongo = 'mongodb://localhost:27017/libreria_evaluacion'
+$compass = @(
+    (Join-Path $env:LOCALAPPDATA 'MongoDBCompass\MongoDBCompass.exe'),
+    'C:\Program Files\MongoDB Compass\MongoDBCompass.exe'
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $compass) {
+    Aviso 'MongoDB Compass no esta instalado (opcional): winget install MongoDB.Compass.Full'
+} elseif (Get-Process MongoDBCompass -ErrorAction SilentlyContinue) {
+    Bien 'Compass ya estaba abierto'
+} else {
+    # Compass recibe la cadena de conexion y se conecta solo a la base de la entrega.
+    Start-Process -FilePath $compass -ArgumentList $uriMongo
+    Bien "Compass abierto y conectado a $uriMongo"
+}
+
+# --------------------------------------------------------------------------------------------
 Paso 'Cliente web (React, puerto 5173)'
 
 if (Escuchando 5173) {
@@ -191,6 +232,8 @@ Write-Host ' Todo listo para la demostracion' -ForegroundColor Cyan
 Write-Host "   Servidor:  $urlGraphQL   (consola: http://localhost:8081/graphiql)"
 Write-Host "   Web:       $urlWeb"
 Write-Host '   Celular:   app "Libreria" (si se desconecta el cable, ejecutar de nuevo)'
-Write-Host '   MongoDB:   localhost:27017, base "libreria" (colecciones libros y ejemplares)'
+Write-Host '   MongoDB:   localhost:27017, base "libreria_evaluacion" (colecciones libros y ejemplares)'
+Write-Host '   Compass:   mongodb://localhost:27017/libreria_evaluacion (libros y ejemplares)'
+Write-Host '   Logs:      ventana "Logs Libreria - web y app" (actualizacion en vivo)'
 Write-Host ' Para apagar: cerrar las ventanas "Servidor GraphQL" y "Cliente web React".'
 Write-Host '======================================================================' -ForegroundColor Cyan

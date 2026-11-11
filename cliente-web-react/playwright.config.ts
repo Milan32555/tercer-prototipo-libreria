@@ -17,7 +17,7 @@ const AQUI = path.dirname(fileURLToPath(import.meta.url));
  */
 const JAVA = process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, "bin", "java") : "java";
 const JAR = path.resolve(AQUI, "../servidor-libreria-mongo/target/ServidorLibreriaMongo-3.0.0.jar");
-const ARGUMENTOS = "--libreria.mongo.base=libreria_e2e --libreria.datos-iniciales.reiniciar=true";
+const ARGUMENTOS = "--libreria.mongo.base=libreria_e2e --libreria.datos-iniciales.habilitado=true --libreria.datos-iniciales.reiniciar=true";
 
 export default defineConfig({
   testDir: "./e2e",

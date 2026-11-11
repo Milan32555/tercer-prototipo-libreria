@@ -64,7 +64,7 @@ export default function EliminarLibro() {
       />
 
       <div className="pila">
-        <BuscadorClave key={busqueda} etiqueta="ISBN del libro" placeholder="978-8420401751" cargando={cargando && !libro} alBuscar={buscar} />
+        <BuscadorClave key={busqueda} etiqueta="ISBN del libro" placeholder="1003" cargando={cargando && !libro} alBuscar={buscar} />
         {error && <Banner titulo={libro ? "El servidor no permitió eliminar el libro" : "No se pudo buscar el libro"}>{error}</Banner>}
         {sinResultado && <SinResultados titulo="Sin resultados">{sinResultado}</SinResultados>}
         {libro && (

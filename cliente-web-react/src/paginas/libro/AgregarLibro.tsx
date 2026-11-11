@@ -91,7 +91,7 @@ export default function AgregarLibro() {
           </div>
           <div className="rejilla-campos">
             <Campo etiqueta="ISBN" value={datos.isbn} onChange={cambiar("isbn")} error={errores.isbn}
-                   placeholder="978-0307474728" autoComplete="off" />
+                   placeholder="1001" autoComplete="off" />
             <Campo etiqueta="Título" value={datos.titulo} onChange={cambiar("titulo")} error={errores.titulo} ancho />
             <Campo etiqueta="Autor" value={datos.autor} onChange={cambiar("autor")} error={errores.autor} ancho />
           </div>

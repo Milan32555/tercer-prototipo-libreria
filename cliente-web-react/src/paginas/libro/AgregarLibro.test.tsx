@@ -14,7 +14,7 @@ vi.mock("../../graphql/servicioLibro", async (importOriginal) => ({
 
 async function llenarYEnviar() {
   const { user } = renderizar(<AgregarLibro />);
-  await user.type(screen.getByLabelText("ISBN"), "978-9681649500");
+  await user.type(screen.getByLabelText("ISBN"), "1008");
   await user.type(screen.getByLabelText("Título"), "Pedro Páramo");
   await user.type(screen.getByLabelText("Autor"), "Juan Rulfo");
   await user.type(screen.getByLabelText("Precio"), "42000.5");
@@ -34,9 +34,9 @@ describe("AgregarLibro", () => {
     await llenarYEnviar();
 
     expect(await screen.findByText("Libro adicionado")).toBeInTheDocument();
-    expect(screen.getByText("«Pedro Páramo» quedó registrado con el ISBN 978-9681649500.")).toBeInTheDocument();
+    expect(screen.getByText("«Pedro Páramo» quedó registrado con el ISBN 1008.")).toBeInTheDocument();
     expect(crearLibro).toHaveBeenCalledWith({
-      isbn: "978-9681649500", titulo: "Pedro Páramo", autor: "Juan Rulfo", precio: 42000.5,
+      isbn: "1008", titulo: "Pedro Páramo", autor: "Juan Rulfo", precio: 42000.5,
       numeroPaginas: 129, fechaPublicacion: "1955-03-19T10:30", genero: "NO_FICCION",
       editorial: "Fondo de Cultura Económica", sinopsis: null
     });
@@ -57,19 +57,19 @@ describe("AgregarLibro", () => {
     expect(crearLibro).not.toHaveBeenCalled();
 
     // Al corregir un campo, su error desaparece.
-    await user.type(screen.getByLabelText("ISBN"), "978-1");
+    await user.type(screen.getByLabelText("ISBN"), "1");
     expect(screen.getByLabelText("ISBN")).not.toHaveAttribute("aria-invalid");
   });
 
   it("valida el formato del ISBN, la fecha no futura y el largo de la sinopsis", async () => {
     const { user } = renderizar(<AgregarLibro />);
-    await user.type(screen.getByLabelText("ISBN"), "978-12");
+    await user.type(screen.getByLabelText("ISBN"), "12345");
     fireEvent.change(screen.getByLabelText("Fecha de publicación"), { target: { value: "2999-01-01T00:00" } });
     fireEvent.change(screen.getByLabelText("Sinopsis (opcional)"), { target: { value: "x".repeat(501) } });
 
     await user.click(screen.getByRole("button", { name: "Adicionar libro" }));
 
-    expect(screen.getByText("El ISBN debe tener 10 o 13 dígitos (se permiten guiones).")).toBeInTheDocument();
+    expect(screen.getByText("El ISBN debe tener de 1 a 4 dígitos (solo números).")).toBeInTheDocument();
     expect(screen.getByText("La fecha no puede ser futura.")).toBeInTheDocument();
     expect(screen.getByText("Máximo 500 caracteres.")).toBeInTheDocument();
     expect(screen.getByText("501 / 500")).toHaveClass("excedido");
@@ -77,11 +77,11 @@ describe("AgregarLibro", () => {
   });
 
   it("muestra el rechazo del servidor y conserva los datos escritos", async () => {
-    vi.mocked(crearLibro).mockRejectedValue(new ErrorGraphQL("Ya existe un libro con el ISBN 978-9681649500."));
+    vi.mocked(crearLibro).mockRejectedValue(new ErrorGraphQL("Ya existe un libro con el ISBN 1008."));
 
     await llenarYEnviar();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un libro con el ISBN 978-9681649500.");
-    expect(screen.getByLabelText("ISBN")).toHaveValue("978-9681649500");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un libro con el ISBN 1008.");
+    expect(screen.getByLabelText("ISBN")).toHaveValue("1008");
   });
 });

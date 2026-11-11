@@ -42,15 +42,15 @@ class RegistroOperacionesTest {
         filtro.put("autor", "garcia");
         filtro.put("genero", null);
         Map<String, Object> creacion = Map.of("input",
-                Map.of("isbn", "978-1", "titulo", "Pedro Páramo", "autor", "Juan Rulfo", "precio", 39000));
+                Map.of("isbn", "1008", "titulo", "Pedro Páramo", "autor", "Juan Rulfo", "precio", 39000));
 
         assertThat(RegistroOperaciones.linea("Cliente web",
                 new Operacion("consulta", List.of("librosFiltrados", "totalLibrosFiltrados")), filtro, null))
                 .isEqualTo("Cliente web  | consulta librosFiltrados + totalLibrosFiltrados (autor=garcia)");
         assertThat(RegistroOperaciones.linea("App móvil", new Operacion("mutación", List.of("crearLibro")), creacion, null))
-                .isEqualTo("App móvil    | mutación crearLibro (isbn=978-1, titulo=Pedro Páramo)");
+                .isEqualTo("App móvil    | mutación crearLibro (isbn=1008, titulo=Pedro Páramo)");
         assertThat(RegistroOperaciones.linea("App móvil", new Operacion("mutación", List.of("eliminarLibro")),
-                Map.of("isbn", "978-0307474728"), "No se puede eliminar el libro"))
-                .endsWith("eliminarLibro (isbn=978-0307474728)  -> RECHAZADA: No se puede eliminar el libro");
+                Map.of("isbn", "1001"), "No se puede eliminar el libro"))
+                .endsWith("eliminarLibro (isbn=1001)  -> RECHAZADA: No se puede eliminar el libro");
     }
 }

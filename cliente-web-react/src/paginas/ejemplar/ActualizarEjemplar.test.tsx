@@ -15,7 +15,7 @@ vi.mock("../../graphql/servicioEjemplar", () => ({
 
 const EJ_001: Ejemplar = {
   codigo: "EJ-001", estado: "DISPONIBLE", ubicacion: "Estante A1",
-  fechaIngreso: "2024-02-10T09:00:00", precioReposicion: 65000, numeroPrestamos: 4, isbnLibro: "978-0307474728",
+  fechaIngreso: "2024-02-10T09:00:00", precioReposicion: 65000, numeroPrestamos: 4, isbnLibro: "1001",
   id: "6af377e075da53cd0c59cab0", libroId: "6af377e075da53cd0c59ca9f", observaciones: null, version: 2,
   libro: { titulo: "Cien años de soledad", autor: "Gabriel García Márquez" }
 };
@@ -37,7 +37,7 @@ describe("ActualizarEjemplar", () => {
     const ficha = screen.getByRole("article", { name: "Ejemplar EJ-001" });
     expect(within(ficha).getByText("Estante A1")).toBeInTheDocument();
     expect(within(ficha).getByText(/10\/02\/2024.*09:00/)).toBeInTheDocument();
-    expect(within(ficha).getAllByText("978-0307474728").length).toBeGreaterThan(0);
+    expect(within(ficha).getAllByText("1001").length).toBeGreaterThan(0);
     expect(screen.getByRole("combobox", { name: "Estado" })).toHaveTextContent("Disponible");
     expect(screen.getByLabelText("Ubicación")).toHaveValue("Estante A1");
     expect(screen.getByLabelText("Fecha de ingreso")).toHaveValue("2024-02-10T09:00");
@@ -65,7 +65,7 @@ describe("ActualizarEjemplar", () => {
     expect(await screen.findByText("Cambios guardados")).toBeInTheDocument();
     expect(screen.getByText("EJ-001 quedó prestado con 5 préstamos.")).toBeInTheDocument();
     expect(actualizarEjemplar).toHaveBeenCalledWith({
-      codigo: "EJ-001", isbnLibro: "978-0307474728", estado: "PRESTADO", ubicacion: "Mostrador",
+      codigo: "EJ-001", isbnLibro: "1001", estado: "PRESTADO", ubicacion: "Mostrador",
       fechaIngreso: "2024-02-10T09:00", precioReposicion: 65000, observaciones: "Prestado a Sara", version: 2
     });
     expect(notificar).toHaveBeenCalledTimes(1);

@@ -34,11 +34,12 @@ export function unico(info: TestInfo): string {
 
 let contador = 0;
 
-/** ISBN-13 válido y único (979-5 para escritorio, 979-6 para celular). */
+const inicioIsbn = Math.floor(Math.random() * 900);
+
+/** ISBN de 4 dígitos único en la corrida (5xxx en escritorio, 6xxx en celular). */
 export function isbnUnico(info: TestInfo): string {
   contador++;
-  const numero = (Date.now() % 1_000_000) * 100 + (contador % 100);
-  return `979-${info.project.name === "celular" ? "6" : "5"}${String(numero).padStart(9, "0").slice(-9)}`;
+  return String((info.project.name === "celular" ? 6000 : 5000) + ((inicioIsbn + contador) % 1000));
 }
 
 /** Código de ejemplar válido (EJ- y 6 dígitos) y único. */

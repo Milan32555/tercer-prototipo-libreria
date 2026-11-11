@@ -23,7 +23,7 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
     @Value("${libreria.mongo.uri:mongodb://localhost:27017}")
     private String uri;
 
-    @Value("${libreria.mongo.base:libreria}")
+    @Value("${libreria.mongo.base:libreria_evaluacion}")
     private String base;
 
     @Override

@@ -22,9 +22,9 @@ const _sinCapturas = bool.fromEnvironment('SIN_CAPTURAS');
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   final sufijo = _sufijoDefinido.isNotEmpty ? _sufijoDefinido : '${DateTime.now().millisecondsSinceEpoch % 10000000}';
-  // ISBN-13 y código EJ-000 válidos y únicos en cada recorrido.
+  // ISBN de 4 dígitos y código EJ-000 válidos y únicos en cada recorrido.
   final numero = int.parse(sufijo) % 100000;
-  final isbnNuevo = '979-7${numero.toString().padLeft(9, '0')}';
+  final isbnNuevo = '${8000 + numero % 1000}';
   final codigoNuevo = 'EJ-9${numero.toString().padLeft(5, '0')}';
 
   testWidgets('recorrido de todos los casos de uso en el celular', (tester) async {
@@ -155,7 +155,7 @@ void main() {
 
     // ── Libro: detalle (maestro + detalle) ─────────────────────────────────────
     await irA('Detalle');
-    await buscar('ISBN del libro', '978-0307474728');
+    await buscar('ISBN del libro', '1001');
     await esperar(find.text('Maestro: libro'));
     await captura('23-libro-detalle');
     await mostrar(find.textContaining('Detalle: '));
@@ -175,7 +175,7 @@ void main() {
 
     // ── Libro: eliminar (rechazado por tener ejemplares; cancelar; confirmar) ──
     await irA('Eliminar');
-    await buscar('ISBN del libro', '978-0307474728');
+    await buscar('ISBN del libro', '1001');
     await esperar(find.text('Libro a eliminar'));
     await tocar(find.widgetWithText(FilledButton, 'Eliminar libro'));
     await captura('40-libro-eliminar-hoja');
@@ -183,7 +183,7 @@ void main() {
     await esperar(find.text('El servidor no permitió eliminar el libro'));
     await captura('41-libro-eliminar-rechazo');
 
-    await buscar('ISBN del libro', '978-8420401751'); // Delirio: no tiene ejemplares
+    await buscar('ISBN del libro', '1003'); // Delirio: no tiene ejemplares
     await esperar(find.text('Delirio'));
     await captura('42-libro-eliminar-ficha');
     await tocar(find.widgetWithText(FilledButton, 'Eliminar libro'));
@@ -214,7 +214,7 @@ void main() {
     // ── Ejemplar: adicionar (inválido y válido) ───────────────────────────────
     await irA('Adicionar', grupo: 1);
     await escribir('Código del ejemplar', codigoNuevo);
-    await escribir('ISBN del libro', '978-8420633121');
+    await escribir('ISBN del libro', '1009');
     await esperar(find.text('Ficciones · Jorge Luis Borges')); // el libro elegido por su ISBN
     await escribir('Ubicación', 'Estante D2');
     await elegirFechaYHora();
@@ -237,7 +237,7 @@ void main() {
     await esperar(find.text('Sin resultados'));
     await captura('71-ejemplar-consultar-no-encontrado');
     await tocar(find.text('Por libro y ubicación'));
-    await escribir('ISBN del libro', '978-0307474728');
+    await escribir('ISBN del libro', '1001');
     await escribir('Ubicación', 'estante a1');
     await tocar(find.widgetWithText(FilledButton, 'Buscar'));
     await esperar(find.text('3 ejemplares de ese libro en esa ubicación'));

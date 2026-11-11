@@ -77,26 +77,26 @@ test.describe("Libro", () => {
     await page.getByRole("button", { name: "Adicionar libro" }).click();
     await expect(page.getByText("Este campo es obligatorio.")).toHaveCount(5);
     await expect(page.getByText("Elige la fecha y la hora.")).toBeVisible();
-    await page.getByLabel("ISBN").fill("978-12");
+    await page.getByLabel("ISBN").fill("12345");
     await page.getByRole("button", { name: "Adicionar libro" }).click();
-    await expect(page.getByText("El ISBN debe tener 10 o 13 dígitos (se permiten guiones).")).toBeVisible();
+    await expect(page.getByText("El ISBN debe tener de 1 a 4 dígitos (solo números).")).toBeVisible();
     await capturar(page, info, "12-libro-adicionar-validacion", true);
 
     // ISBN repetido: lo rechaza el servidor (índice único de MongoDB).
-    await page.getByLabel("ISBN").fill("978-0307474728");
+    await page.getByLabel("ISBN").fill("1001");
     await page.getByLabel("Título").fill("Copia");
     await page.getByLabel("Autor").fill("Alguien");
     await page.getByLabel("Fecha de publicación").fill("2001-01-01T10:00");
     await page.getByLabel("Precio").fill("1000");
     await page.getByLabel("Número de páginas").fill("10");
     await page.getByRole("button", { name: "Adicionar libro" }).click();
-    await expect(page.getByRole("alert")).toContainText("Ya existe un libro con el ISBN 978-0307474728");
+    await expect(page.getByRole("alert")).toContainText("Ya existe un libro con el ISBN 1001");
     await capturar(page, info, "13-libro-adicionar-rechazo");
   });
 
   test("consultar: encontrado por ISBN y por título, y no encontrado", async ({ page }, info) => {
     await page.goto("/libros/consultar");
-    await page.getByLabel("ISBN", { exact: true }).fill("978-0307474728");
+    await page.getByLabel("ISBN", { exact: true }).fill("1001");
     await page.getByRole("button", { name: "Buscar" }).click();
     const ficha = page.getByRole("article", { name: "Libro Cien años de soledad" });
     await expect(ficha).toContainText("30/05/1967, 00:00");
@@ -118,10 +118,10 @@ test.describe("Libro", () => {
 
   test("detalle: maestro (libro) + detalle (ejemplares) con conteos del servidor", async ({ page, request }, info) => {
     const { detalleLibro } = await graphql<{ detalleLibro: { totalEjemplares: number } }>(
-      request, `{ detalleLibro(isbn: "978-0307474728") { totalEjemplares } }`
+      request, `{ detalleLibro(isbn: "1001") { totalEjemplares } }`
     );
     await page.goto("/libros/detalle");
-    await page.getByLabel("ISBN del libro").fill("978-0307474728");
+    await page.getByLabel("ISBN del libro").fill("1001");
     await page.getByRole("button", { name: "Buscar" }).click();
     await expect(page.getByText("Maestro: libro")).toBeVisible();
     const tabla = page.getByRole("table", { name: "Ejemplares del libro" });
@@ -201,7 +201,7 @@ test.describe("Libro", () => {
 
   test("eliminar un libro con ejemplares: el servidor lo rechaza", async ({ page, request }, info) => {
     await page.goto("/libros/eliminar");
-    await page.getByLabel("ISBN del libro").fill("978-0307474728");
+    await page.getByLabel("ISBN del libro").fill("1001");
     await page.getByRole("button", { name: "Buscar" }).click();
     await page.getByRole("button", { name: "Eliminar libro" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar", exact: true }).click();
@@ -209,7 +209,7 @@ test.describe("Libro", () => {
     await expect(page.getByRole("alert")).toContainText("porque tiene");
     await expect(page.getByRole("alert")).toContainText("ejemplar(es) registrado(s)");
     await capturar(page, info, "43-libro-eliminar-rechazo");
-    const { libroPorIsbn } = await graphql<{ libroPorIsbn: unknown }>(request, `{ libroPorIsbn(isbn: "978-0307474728") { isbn } }`);
+    const { libroPorIsbn } = await graphql<{ libroPorIsbn: unknown }>(request, `{ libroPorIsbn(isbn: "1001") { isbn } }`);
     expect(libroPorIsbn).not.toBeNull();
   });
 
@@ -290,7 +290,7 @@ test.describe("Ejemplar", () => {
     const codigo = codigoUnico(info);
     await page.goto("/ejemplares/agregar");
     await page.getByLabel("Código del ejemplar").fill(codigo);
-    await page.getByLabel("ISBN del libro").fill("978-8420633121");
+    await page.getByLabel("ISBN del libro").fill("1009");
     await expect(page.getByText("Ficciones")).toBeVisible(); // el libro elegido
     await elegir(page, "Estado", "Disponible");
     await page.getByLabel("Ubicación", { exact: true }).fill("Estante D2");
@@ -310,18 +310,18 @@ test.describe("Ejemplar", () => {
       request, `query ($c: ID!) { ejemplarPorCodigo(codigo: $c) { isbnLibro numeroPrestamos observaciones libro { titulo } } }`, { c: codigo }
     );
     expect(ejemplarPorCodigo).toEqual({
-      isbnLibro: "978-8420633121", numeroPrestamos: 0, observaciones: "Donado por un lector", libro: { titulo: "Ficciones" }
+      isbnLibro: "1009", numeroPrestamos: 0, observaciones: "Donado por un lector", libro: { titulo: "Ficciones" }
     });
 
     // Libro inexistente: lo rechaza el servidor.
     await page.getByLabel("Código del ejemplar").fill(codigoUnico(info));
-    await page.getByLabel("ISBN del libro").fill("978-0000000000");
+    await page.getByLabel("ISBN del libro").fill("9999");
     await expect(page.getByText("No hay ningún libro con ese ISBN.")).toBeVisible();
     await page.getByLabel("Ubicación", { exact: true }).fill("Estante D2");
     await page.getByLabel("Fecha de ingreso").fill("2026-03-02T16:10");
     await page.getByLabel("Precio de reposición").fill("52000");
     await page.getByRole("button", { name: "Adicionar ejemplar" }).click();
-    await expect(page.getByRole("alert")).toContainText("No existe un libro con el ISBN 978-0000000000");
+    await expect(page.getByRole("alert")).toContainText("No existe un libro con el ISBN 9999");
     await capturar(page, info, "62-ejemplar-adicionar-rechazo");
   });
 
@@ -342,7 +342,7 @@ test.describe("Ejemplar", () => {
     await capturar(page, info, "71-ejemplar-consultar-no-encontrado");
 
     await page.getByText("Por libro y ubicación").click();
-    await page.getByLabel("ISBN del libro").fill("978-0307474728");
+    await page.getByLabel("ISBN del libro").fill("1001");
     await page.getByLabel("Ubicación", { exact: true }).fill("estante a1");
     await page.getByRole("button", { name: "Buscar" }).click();
     await expect(page.getByText("3 ejemplares de ese libro en esa ubicación")).toBeVisible();
@@ -354,7 +354,7 @@ test.describe("Ejemplar", () => {
 
   test("actualizar: al pasar a Prestado el servidor suma un préstamo", async ({ page, request }, info) => {
     const codigo = codigoUnico(info);
-    await crearEjemplar(request, codigo, "978-0307474728", 4);
+    await crearEjemplar(request, codigo, "1001", 4);
     await page.goto("/ejemplares/actualizar");
     await page.getByLabel("Código del ejemplar").fill(codigo);
     await page.getByRole("button", { name: "Buscar" }).click();
@@ -380,7 +380,7 @@ test.describe("Ejemplar", () => {
 
   test("eliminar: cancelar no borra y confirmar sí", async ({ page, request }, info) => {
     const codigo = codigoUnico(info);
-    await crearEjemplar(request, codigo, "978-9580469117", 0);
+    await crearEjemplar(request, codigo, "1011", 0);
     await page.goto("/ejemplares/eliminar");
     await page.getByLabel("Código del ejemplar").fill(codigo);
     await page.getByRole("button", { name: "Buscar" }).click();
@@ -432,11 +432,11 @@ test.describe("Ejemplar", () => {
     }
     await capturar(page, info, "96-ejemplar-listar-estado");
 
-    await page.getByLabel("ISBN del libro").fill("978-0307474728");
+    await page.getByLabel("ISBN del libro").fill("1001");
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await expect(page.getByText(conteo(await total("DADO_DE_BAJA", "978-0307474728")), { exact: true })).toBeVisible();
+    await expect(page.getByText(conteo(await total("DADO_DE_BAJA", "1001")), { exact: true })).toBeVisible();
     await page.getByRole("radio", { name: "Todos", exact: true }).click({ force: true });
-    await expect(page.getByText(conteo(await total(null, "978-0307474728")), { exact: true })).toBeVisible();
+    await expect(page.getByText(conteo(await total(null, "1001")), { exact: true })).toBeVisible();
     await capturar(page, info, "97-ejemplar-listar-isbn");
   });
 });

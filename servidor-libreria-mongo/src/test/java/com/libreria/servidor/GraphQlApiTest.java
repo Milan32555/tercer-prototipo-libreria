@@ -25,7 +25,7 @@ class GraphQlApiTest extends PruebaBase {
     void datos() {
         crearLibro(ISBN_CIEN, "Cien años de soledad", 65000, "FICCION");
         crearLibro(ISBN_MARIA, "María", 39000, "FICCION");
-        crearLibro("978-8432311451", "Las venas abiertas de América Latina", 79000, "HISTORIA");
+        crearLibro("1012", "Las venas abiertas de América Latina", 79000, "HISTORIA");
         crearEjemplar("EJ-001", ISBN_CIEN, "DISPONIBLE", "Estante A1");
         crearEjemplar("EJ-002", ISBN_CIEN, "PRESTADO", "Estante A1");
         crearEjemplar("EJ-003", ISBN_MARIA, "DANIADO", "Bodega");
@@ -35,7 +35,7 @@ class GraphQlApiTest extends PruebaBase {
 
     @Test
     void crearLibroDevuelveIdVersionYOpcionales() {
-        graphQl.document("mutation { crearLibro(input: " + String.format(LIBRO, "978-9681649500", "Pedro Páramo",
+        graphQl.document("mutation { crearLibro(input: " + String.format(LIBRO, "1008", "Pedro Páramo",
                         "42000", "FICCION", ", sinopsis: \"Comala\"") + ") { id isbn version editorial sinopsis cantidadEjemplares } }")
                 .execute()
                 .path("crearLibro.id").entity(String.class).satisfies(id -> assertThat(id).hasSize(24))
@@ -65,7 +65,7 @@ class GraphQlApiTest extends PruebaBase {
 
     @Test
     void consultarLibroPorLosDosCriterios() {
-        graphQl.document("{ a: libroPorIsbn(isbn: \"978-9589012338\") { titulo } b: libroPorTitulo(titulo: \"MARIA\") { isbn } c: libroPorIsbn(isbn: \"978-0000000000\") { titulo } }")
+        graphQl.document("{ a: libroPorIsbn(isbn: \"1004\") { titulo } b: libroPorTitulo(titulo: \"MARIA\") { isbn } c: libroPorIsbn(isbn: \"9999\") { titulo } }")
                 .execute()
                 .path("a.titulo").entity(String.class).isEqualTo("María")
                 .path("b.isbn").entity(String.class).isEqualTo(ISBN_MARIA)
@@ -74,7 +74,7 @@ class GraphQlApiTest extends PruebaBase {
 
     @Test
     void detalleLibroMaestroYDetalle() {
-        graphQl.document("{ detalleLibro(isbn: \"978-0307474728\") { libro { titulo } totalEjemplares totalPrestamos conteoPorEstado { estado cantidad } ejemplares { codigo isbnLibro libroId libro { titulo } } } }")
+        graphQl.document("{ detalleLibro(isbn: \"1001\") { libro { titulo } totalEjemplares totalPrestamos conteoPorEstado { estado cantidad } ejemplares { codigo isbnLibro libroId libro { titulo } } } }")
                 .execute()
                 .path("detalleLibro.libro.titulo").entity(String.class).isEqualTo("Cien años de soledad")
                 .path("detalleLibro.totalEjemplares").entity(Integer.class).isEqualTo(2)
@@ -102,23 +102,23 @@ class GraphQlApiTest extends PruebaBase {
 
     @Test
     void eliminarLibroConYSinEjemplares() {
-        graphQl.document("mutation { eliminarLibro(isbn: \"978-8432311451\") { titulo } }").execute()
+        graphQl.document("mutation { eliminarLibro(isbn: \"1012\") { titulo } }").execute()
                 .path("eliminarLibro.titulo").entity(String.class).isEqualTo("Las venas abiertas de América Latina");
 
-        error("mutation { eliminarLibro(isbn: \"978-0307474728\") { titulo } }", "REGLA_NEGOCIO",
-                "No se puede eliminar el libro 978-0307474728 porque tiene 2 ejemplar(es) registrado(s). "
+        error("mutation { eliminarLibro(isbn: \"1001\") { titulo } }", "REGLA_NEGOCIO",
+                "No se puede eliminar el libro 1001 porque tiene 2 ejemplar(es) registrado(s). "
                         + "Elimine primero sus ejemplares.");
-        error("mutation { eliminarLibro(isbn: \"978-0000000000\") { titulo } }", "NO_ENCONTRADO",
-                "No existe un libro con el ISBN 978-0000000000.");
+        error("mutation { eliminarLibro(isbn: \"9999\") { titulo } }", "NO_ENCONTRADO",
+                "No existe un libro con el ISBN 9999.");
     }
 
     @Test
     void erroresDeValidacionYDuplicadoEnEspanol() {
         error("mutation { crearLibro(input: " + String.format(LIBRO, "abc", "", "-1", "FICCION", "") + ") { isbn } }",
-                "VALIDACION", "El ISBN debe tener 10 o 13 dígitos (se permiten guiones), por ejemplo 978-0307474728. "
+                "VALIDACION", "El ISBN debe tener de 1 a 4 dígitos (solo números), por ejemplo 1001. "
                         + "El precio debe ser mayor que cero. El título es obligatorio.");
         error("mutation { crearLibro(input: " + String.format(LIBRO, ISBN_CIEN, "Repetido", "1", "FICCION", "") + ") { isbn } }",
-                "DUPLICADO", "Ya existe un libro con el ISBN 978-0307474728.");
+                "DUPLICADO", "Ya existe un libro con el ISBN 1001.");
     }
 
     // ------------------------------------------------------------------ Ejemplar
@@ -142,7 +142,7 @@ class GraphQlApiTest extends PruebaBase {
                             .containsEntry("version", 0);
                     assertThat((String) fila.get("libroId")).hasSize(24);
                 });
-        graphQl.document("{ ejemplaresConLibro(isbn: \"978-9589012338\") { contenido { codigo tituloLibro } } }")
+        graphQl.document("{ ejemplaresConLibro(isbn: \"1004\") { contenido { codigo tituloLibro } } }")
                 .execute()
                 .path("ejemplaresConLibro.contenido[*].codigo").entityList(String.class).containsExactly("EJ-003");
     }
@@ -158,7 +158,7 @@ class GraphQlApiTest extends PruebaBase {
 
     @Test
     void consultarEjemplarPorLosDosCriterios() {
-        graphQl.document("{ ejemplarPorCodigo(codigo: \"ej-003\") { codigo estado libro { titulo } } ejemplaresPorLibroYUbicacion(isbn: \"978-0307474728\", ubicacion: \"estante a1\") { codigo } }")
+        graphQl.document("{ ejemplarPorCodigo(codigo: \"ej-003\") { codigo estado libro { titulo } } ejemplaresPorLibroYUbicacion(isbn: \"1001\", ubicacion: \"estante a1\") { codigo } }")
                 .execute()
                 .path("ejemplarPorCodigo.libro.titulo").entity(String.class).isEqualTo("María")
                 .path("ejemplaresPorLibroYUbicacion[*].codigo").entityList(String.class).containsExactly("EJ-001", "EJ-002");
@@ -167,7 +167,7 @@ class GraphQlApiTest extends PruebaBase {
     @Test
     void actualizarEjemplarSumaPrestamoYEliminar() {
         graphQl.document("""
-                        mutation { actualizarEjemplar(input: {codigo: "EJ-001", isbnLibro: "978-0307474728", estado: PRESTADO,
+                        mutation { actualizarEjemplar(input: {codigo: "EJ-001", isbnLibro: "1001", estado: PRESTADO,
                           ubicacion: "Estante A1", fechaIngreso: "2024-02-10T09:00:00", precioReposicion: 65000,
                           numeroPrestamos: 50, observaciones: "Prestado a Sara", version: 0}) {
                           estado numeroPrestamos observaciones version } }""")
@@ -187,10 +187,10 @@ class GraphQlApiTest extends PruebaBase {
         error(ejemplarMutacion("crearEjemplar", "EJ-9", ISBN_CIEN), "VALIDACION",
                 "El código debe tener el formato EJ-000 (EJ- y de 3 a 6 dígitos).");
         error(ejemplarMutacion("crearEjemplar", "EJ-001", ISBN_CIEN), "DUPLICADO", "Ya existe un ejemplar con el código EJ-001.");
-        error(ejemplarMutacion("crearEjemplar", "EJ-100", "978-0000000000"), "NO_ENCONTRADO",
-                "No existe un libro con el ISBN 978-0000000000; el ejemplar debe pertenecer a un libro registrado.");
+        error(ejemplarMutacion("crearEjemplar", "EJ-100", "9999"), "NO_ENCONTRADO",
+                "No existe un libro con el ISBN 9999; el ejemplar debe pertenecer a un libro registrado.");
         error(ejemplarMutacion("actualizarEjemplar", "EJ-001", ISBN_MARIA), "REGLA_NEGOCIO",
-                "El ejemplar EJ-001 pertenece al libro 978-0307474728; no se puede cambiar de libro.");
+                "El ejemplar EJ-001 pertenece al libro 1001; no se puede cambiar de libro.");
     }
 
     // ------------------------------------------------------------------ Resumen y Observer

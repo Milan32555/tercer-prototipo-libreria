@@ -97,7 +97,7 @@ class _EliminarLibroState extends State<EliminarLibro> {
           BuscadorClave(
             controller: _isbn,
             etiqueta: 'ISBN del libro',
-            pista: '978-8420401751',
+            pista: '1003',
             onBuscar: _buscar,
             cargando: _cargando && _libro == null,
           ),

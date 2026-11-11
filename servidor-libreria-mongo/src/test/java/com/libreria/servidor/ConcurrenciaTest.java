@@ -46,7 +46,7 @@ class ConcurrenciaTest extends PruebaBase {
                 resultados.stream().filter("OK"::equals).count(),
                 resultados.stream().filter(r -> r.startsWith("DUPLICADO")).count());
         assertThat(resultados).filteredOn("OK"::equals).hasSize(1);
-        assertThat(resultados).filteredOn(r -> r.equals("DUPLICADO: Ya existe un libro con el ISBN 978-0307474728."))
+        assertThat(resultados).filteredOn(r -> r.equals("DUPLICADO: Ya existe un libro con el ISBN 1001."))
                 .hasSize(19);
         assertThat(mongo.getCollection("libros").countDocuments()).isEqualTo(1);
     }
@@ -102,7 +102,7 @@ class ConcurrenciaTest extends PruebaBase {
 
         List<String> resultados = enParalelo(10, () -> {
             String n = Thread.currentThread().getName().replaceAll("\\D", "");
-            return servicioLibro.crear(libro(String.format("978-00000000%02d", Integer.parseInt(n) % 100), "L" + n));
+            return servicioLibro.crear(libro(String.format("20%02d", Integer.parseInt(n) % 100), "L" + n));
         });
 
         long exitos = resultados.stream().filter("OK"::equals).count();

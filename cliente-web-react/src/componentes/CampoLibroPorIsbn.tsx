@@ -19,7 +19,7 @@ export function CampoLibroPorIsbn({ valor, alCambiar, error }: {
 
   useEffect(() => {
     const isbn = valor.trim();
-    if (isbn.replace(/-/g, "").length < 10) {
+    if (!/^\d{1,4}$/.test(isbn)) {
       setVerificacion({ tipo: "nada" });
       return;
     }
@@ -64,7 +64,7 @@ export function CampoLibroPorIsbn({ valor, alCambiar, error }: {
       value={valor}
       onChange={(e) => alCambiar(e.target.value)}
       error={error}
-      placeholder="978-0307474728"
+      placeholder="1001"
       autoComplete="off"
       ayuda={ayuda}
     />

@@ -21,8 +21,8 @@ import java.time.LocalDateTime;
 @ActiveProfiles("test")
 public abstract class PruebaBase {
 
-    public static final String ISBN_CIEN = "978-0307474728";
-    public static final String ISBN_MARIA = "978-9589012338";
+    public static final String ISBN_CIEN = "1001";
+    public static final String ISBN_MARIA = "1004";
 
     @Autowired
     protected MongoTemplate mongo;

@@ -82,7 +82,7 @@ class _DetalleLibroPantallaState extends State<DetalleLibroPantalla> {
           BuscadorClave(
             controller: _isbn,
             etiqueta: 'ISBN del libro',
-            pista: '978-0307474728',
+            pista: '1001',
             onBuscar: _buscar,
             cargando: _cargando,
           ),

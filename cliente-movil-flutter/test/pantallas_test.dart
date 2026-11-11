@@ -220,7 +220,7 @@ void main() {
       await abrir(tester, '/libros/listar');
       expect(find.text('Pedro Páramo'), findsNothing);
 
-      libros = [libroJson(), libroJson(isbn: '978-9681649500', titulo: 'Pedro Páramo', autor: 'Juan Rulfo')];
+      libros = [libroJson(), libroJson(isbn: '1008', titulo: 'Pedro Páramo', autor: 'Juan Rulfo')];
       libroObservable.notificar();
       await tester.pumpAndSettle();
 
@@ -266,7 +266,7 @@ void main() {
       })..instalar();
       await abrir(tester, '/libros/eliminar');
 
-      await escribir(tester, 'ISBN del libro', '978-8420401751');
+      await escribir(tester, 'ISBN del libro', '1003');
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
 
       expect(find.text('Libro a eliminar'), findsOneWidget);
@@ -286,7 +286,7 @@ void main() {
       await tocar(tester, find.widgetWithText(FilledButton, 'Eliminar libro'));
       await tocar(tester, find.widgetWithText(FilledButton, 'Eliminar'));
 
-      expect(servidor.variablesDe('eliminarLibro').single, {'isbn': '978-8420401751'});
+      expect(servidor.variablesDe('eliminarLibro').single, {'isbn': '1003'});
       expect(find.text('Libro eliminado: «Delirio».'), findsOneWidget);
     });
 
@@ -297,7 +297,7 @@ void main() {
       }).instalar();
       await abrir(tester, '/libros/eliminar');
 
-      await escribir(tester, 'ISBN del libro', '978-8420401751');
+      await escribir(tester, 'ISBN del libro', '1003');
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
       await tocar(tester, find.widgetWithText(FilledButton, 'Eliminar libro'));
       await tocar(tester, find.widgetWithText(FilledButton, 'Eliminar'));
@@ -342,7 +342,7 @@ void main() {
       })..instalar();
       await abrir(tester, '/libros/agregar');
 
-      await escribir(tester, 'ISBN', '978-9681649500');
+      await escribir(tester, 'ISBN', '1008');
       await escribir(tester, 'Título', 'Pedro Páramo');
       await escribir(tester, 'Autor', 'Juan Rulfo');
       await escribir(tester, 'Precio', '42000.5');
@@ -355,7 +355,7 @@ void main() {
 
       final hoy = DateTime.now();
       final input = servidor.variablesDe('crearLibro').single['input'] as Map<String, dynamic>;
-      expect(input['isbn'], '978-9681649500');
+      expect(input['isbn'], '1008');
       expect(input['precio'], 42000.5);
       expect(input['numeroPaginas'], 129);
       expect(input['genero'], 'NO_FICCION');
@@ -369,14 +369,14 @@ void main() {
     });
 
     testWidgets('muestra el rechazo del servidor', (tester) async {
-      ServidorSimulado({'crearLibro': (_) => throw ErrorSimulado('Ya existe un libro con el ISBN 978-8437624747.')}).instalar();
+      ServidorSimulado({'crearLibro': (_) => throw ErrorSimulado('Ya existe un libro con el ISBN 1010.')}).instalar();
       await abrir(tester, '/libros/agregar');
 
-      await escribir(tester, 'ISBN', '978-1');
+      await escribir(tester, 'ISBN', '12345');
       await tocar(tester, find.widgetWithText(FilledButton, 'Adicionar libro'));
-      expect(find.text('El ISBN debe tener 10 o 13 dígitos (se permiten guiones).'), findsOneWidget);
+      expect(find.text('El ISBN debe tener de 1 a 4 dígitos (solo números).'), findsOneWidget);
 
-      await escribir(tester, 'ISBN', '978-8437624747');
+      await escribir(tester, 'ISBN', '1010');
       await escribir(tester, 'Título', 'Rayuela');
       await escribir(tester, 'Autor', 'Julio Cortázar');
       await escribir(tester, 'Precio', '89000');
@@ -385,7 +385,7 @@ void main() {
       await tocar(tester, find.widgetWithText(FilledButton, 'Adicionar libro'));
 
       expect(find.text('No se pudo adicionar el libro'), findsOneWidget);
-      expect(find.text('Ya existe un libro con el ISBN 978-8437624747.'), findsOneWidget);
+      expect(find.text('Ya existe un libro con el ISBN 1010.'), findsOneWidget);
     });
   });
 
@@ -425,7 +425,7 @@ void main() {
       })..instalar();
       await abrir(tester, '/libros/actualizar');
 
-      await escribir(tester, 'ISBN del libro', '978-8420401751');
+      await escribir(tester, 'ISBN del libro', '1003');
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
 
       expect(find.text('Datos actuales'), findsOneWidget);
@@ -438,7 +438,7 @@ void main() {
 
       expect(servidor.variablesDe('actualizarLibro').single, {
         'input': {
-          'isbn': '978-8420401751',
+          'isbn': '1003',
           'titulo': 'Delirio',
           'autor': 'Laura Restrepo',
           'precio': 57000.0,
@@ -461,7 +461,7 @@ void main() {
       }).instalar();
       await abrir(tester, '/libros/actualizar');
 
-      await escribir(tester, 'ISBN del libro', '978-8420401751');
+      await escribir(tester, 'ISBN del libro', '1003');
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
       await tocar(tester, find.widgetWithText(FilledButton, 'Guardar cambios'));
 
@@ -490,10 +490,10 @@ void main() {
       })..instalar();
       await abrir(tester, '/libros/detalle');
 
-      await escribir(tester, 'ISBN del libro', '978-8420401751');
+      await escribir(tester, 'ISBN del libro', '1003');
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
 
-      expect(servidor.variablesDe('detalleLibro').single, {'isbn': '978-8420401751'});
+      expect(servidor.variablesDe('detalleLibro').single, {'isbn': '1003'});
       expect(find.text('Maestro: libro'), findsOneWidget);
       expect(find.text('Una mujer pierde la razón en Bogotá.'), findsOneWidget);
       expect(find.text('8'), findsOneWidget);
@@ -527,7 +527,7 @@ void main() {
       await escribir(tester, 'Código del ejemplar', 'EJ-001');
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
 
-      expect(find.text('El código EJ-001 y el libro 978-0307474728 no se pueden modificar.'), findsOneWidget);
+      expect(find.text('El código EJ-001 y el libro 1001 no se pueden modificar.'), findsOneWidget);
       expect(find.widgetWithText(TextFormField, 'Estante A1'), findsOneWidget);
       expect(find.text('10/02/2024 09:00'), findsNWidgets(2)); // ficha + campo: fecha Y hora de ingreso
       final prestamos = find.widgetWithText(TextFormField, '4');
@@ -543,7 +543,7 @@ void main() {
       expect(servidor.variablesDe('actualizarEjemplar').single, {
         'input': {
           'codigo': 'EJ-001',
-          'isbnLibro': '978-0307474728',
+          'isbnLibro': '1001',
           'estado': 'PRESTADO',
           'ubicacion': 'Mostrador',
           'fechaIngreso': '2024-02-10T09:00:00',
@@ -563,7 +563,7 @@ void main() {
     testWidgets('envía el número de préstamos y valida que no sea negativo', (tester) async {
       final servidor = ServidorSimulado({
         'crearEjemplar': (v) => {...ejemplarJson(), ...(v['input'] as Map<String, dynamic>)},
-        'libroPorIsbn': (_) => libroJson(isbn: '978-0307474728', titulo: 'Cien años de soledad', autor: 'Gabriel García Márquez'),
+        'libroPorIsbn': (_) => libroJson(isbn: '1001', titulo: 'Cien años de soledad', autor: 'Gabriel García Márquez'),
         'resumenInventario': (_) => resumenJson(),
         'revisionLibros': (_) => 1,
         'revisionEjemplares': (_) => 1,
@@ -571,7 +571,7 @@ void main() {
       await abrir(tester, '/ejemplares/agregar');
 
       await escribir(tester, 'Código del ejemplar', 'EJ-100');
-      await escribir(tester, 'ISBN del libro', '978-0307474728');
+      await escribir(tester, 'ISBN del libro', '1001');
       // El libro se elige por su ISBN: se busca en el servidor y se muestra su título.
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
@@ -594,7 +594,7 @@ void main() {
       expect(input['estado'], 'PRESTADO');
       expect(input['precioReposicion'], 45000.0);
       expect(input['numeroPrestamos'], 3);
-      expect(input['isbnLibro'], '978-0307474728');
+      expect(input['isbnLibro'], '1001');
       expect(input['observaciones'], isNull);
       expect(find.text('Ejemplar adicionado: EJ-100.'), findsOneWidget);
     });
@@ -628,10 +628,10 @@ void main() {
       await tocar(tester, find.widgetWithText(ChoiceChip, 'Prestado'));
       expect(servidor.variablesDe('ejemplaresConLibro').last, {'estado': 'PRESTADO', 'isbn': null, 'pagina': 0, 'tamanio': 10});
 
-      await tester.enterText(campoDeBusqueda(), '978-0307474728');
+      await tester.enterText(campoDeBusqueda(), '1001');
       await tocar(tester, find.byTooltip('Filtrar'));
       expect(servidor.variablesDe('ejemplaresConLibro').last,
-          {'estado': 'PRESTADO', 'isbn': '978-0307474728', 'pagina': 0, 'tamanio': 10});
+          {'estado': 'PRESTADO', 'isbn': '1001', 'pagina': 0, 'tamanio': 10});
     });
   });
 
@@ -660,11 +660,11 @@ void main() {
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
       expect(find.text('Este campo es obligatorio.'), findsNWidgets(2));
 
-      await escribir(tester, 'ISBN del libro', '978-0307474728');
+      await escribir(tester, 'ISBN del libro', '1001');
       await escribir(tester, 'Ubicación', 'estante a1');
       await tocar(tester, find.widgetWithText(FilledButton, 'Buscar'));
 
-      expect(servidor.variablesDe('ejemplaresPorLibroYUbicacion').single, {'isbn': '978-0307474728', 'ubicacion': 'estante a1'});
+      expect(servidor.variablesDe('ejemplaresPorLibroYUbicacion').single, {'isbn': '1001', 'ubicacion': 'estante a1'});
       expect(find.text('2 ejemplares de ese libro en esa ubicación'), findsOneWidget);
       expect(find.text('EJ-004'), findsNWidgets(2)); // cabecera + dato "Código"
     });

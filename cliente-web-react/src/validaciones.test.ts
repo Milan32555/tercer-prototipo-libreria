@@ -37,13 +37,14 @@ describe("validaciones de formato", () => {
     expect(hayErrores(validar({ titulo: null }))).toBe(false);
   });
 
-  it("ISBN de 10 o 13 dígitos con guiones (igual que el servidor)", () => {
-    expect(validarIsbn("978-0307474728")).toBeNull();
-    expect(validarIsbn("0-306-40615-X")).toBeNull();
+  it("ISBN de 1 a 4 dígitos, solo números (igual que el servidor)", () => {
+    expect(validarIsbn("1001")).toBeNull();
+    expect(validarIsbn("7")).toBeNull();
     expect(validarIsbn("")).toBe("Este campo es obligatorio.");
-    expect(validarIsbn("978-030747472")).toBe("El ISBN debe tener 10 o 13 dígitos (se permiten guiones).");
-    expect(validarIsbn("978--0307474728")).not.toBeNull();
-    expect(validarIsbn("ISBN9780307474728")).not.toBeNull();
+    expect(validarIsbn("12345")).toBe("El ISBN debe tener de 1 a 4 dígitos (solo números).");
+    expect(validarIsbn("10-01")).not.toBeNull();
+    expect(validarIsbn("ab12")).not.toBeNull();
+    expect(validarIsbn("978-0307474728")).not.toBeNull();
   });
 
   it("código del ejemplar con formato EJ-000", () => {

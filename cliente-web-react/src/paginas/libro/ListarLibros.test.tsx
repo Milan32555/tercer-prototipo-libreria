@@ -14,12 +14,12 @@ vi.mock("../../graphql/servicioLibro", async (importOriginal) => ({
 }));
 
 const CIEN_ANOS: Libro = {
-  isbn: "978-0307474728", titulo: "Cien años de soledad", autor: "Gabriel García Márquez",
+  isbn: "1001", titulo: "Cien años de soledad", autor: "Gabriel García Márquez",
   precio: 65000, numeroPaginas: 496, fechaPublicacion: "1967-05-30T00:00:00", genero: "FICCION",
   editorial: "Sudamericana", cantidadEjemplares: 3
 };
 const PEDRO_PARAMO: Libro = {
-  isbn: "978-9681649500", titulo: "Pedro Páramo", autor: "Juan Rulfo",
+  isbn: "1008", titulo: "Pedro Páramo", autor: "Juan Rulfo",
   precio: 42000, numeroPaginas: 129, fechaPublicacion: "1955-03-19T00:00:00", genero: "FICCION",
   editorial: null, cantidadEjemplares: 2
 };

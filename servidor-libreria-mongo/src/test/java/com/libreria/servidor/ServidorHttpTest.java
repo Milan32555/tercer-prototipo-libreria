@@ -75,12 +75,12 @@ class ServidorHttpTest {
     @Test
     void registraCadaOperacionConElClienteQueLaHizo(CapturedOutput consola) throws Exception {
         enviar("movil", "{\"query\":\"query ($isbn: ID!) { libroPorIsbn(isbn: $isbn) { titulo } }\","
-                + "\"variables\":{\"isbn\":\"978-0307474728\"}}");
-        enviar("web", "{\"query\":\"mutation { eliminarLibro(isbn: \\\"978-0000000000\\\") { isbn } }\"}");
+                + "\"variables\":{\"isbn\":\"1001\"}}");
+        enviar("web", "{\"query\":\"mutation { eliminarLibro(isbn: \\\"9999\\\") { isbn } }\"}");
 
         assertThat(consola.getOut())
-                .contains("App móvil    | consulta libroPorIsbn (isbn=978-0307474728)")
-                .contains("Cliente web  | mutación eliminarLibro  -> RECHAZADA: No existe un libro con el ISBN 978-0000000000.");
+                .contains("App móvil    | consulta libroPorIsbn (isbn=1001)")
+                .contains("Cliente web  | mutación eliminarLibro  -> RECHAZADA: No existe un libro con el ISBN 9999.");
     }
 
     private HttpResponse<String> enviar(String cliente, String cuerpo) throws Exception {

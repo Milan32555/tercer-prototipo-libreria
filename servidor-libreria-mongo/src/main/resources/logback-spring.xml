@@ -4,7 +4,7 @@
   - Consola: hora, nivel, hilo, clase y mensaje.
   - Archivo logs/servidor.log: lo mismo, con rotación diaria y por tamaño (5 MB, 14 días).
   - Logger "operaciones" (RegistroOperaciones): una línea corta por operación GraphQL con el
-    cliente que la hizo, por ejemplo  12:41:05  App móvil    | mutación crearLibro (isbn=978-1)
+    cliente que la hizo, por ejemplo  12:41:05  App móvil    | mutación crearLibro (isbn=1008)
 -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>

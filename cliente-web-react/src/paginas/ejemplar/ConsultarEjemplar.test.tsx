@@ -13,7 +13,7 @@ vi.mock("../../graphql/servicioEjemplar", () => ({
 
 const EJ_007: Ejemplar = {
   codigo: "EJ-007", estado: "DANIADO", ubicacion: "Bodega", fechaIngreso: "2023-11-14T15:10:00",
-  precioReposicion: 39000, numeroPrestamos: 11, isbnLibro: "978-9589012338",
+  precioReposicion: 39000, numeroPrestamos: 11, isbnLibro: "1004",
   observaciones: "Lomo despegado", libro: { titulo: "María", autor: "Jorge Isaacs" }
 };
 
@@ -47,14 +47,14 @@ describe("ConsultarEjemplar", () => {
     await user.click(screen.getByRole("button", { name: "Buscar" }));
     expect(screen.getAllByText("Este campo es obligatorio.")).toHaveLength(2);
 
-    await user.type(screen.getByLabelText("ISBN del libro"), "978-9589012338");
+    await user.type(screen.getByLabelText("ISBN del libro"), "1004");
     await user.type(screen.getByLabelText("Ubicación"), "bodega");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
 
     expect(await screen.findByRole("article", { name: "Ejemplar EJ-017" })).toBeInTheDocument();
     expect(screen.getByRole("article", { name: "Ejemplar EJ-007" })).toBeInTheDocument();
     expect(screen.getByText("2 ejemplares de ese libro en esa ubicación")).toBeInTheDocument();
-    expect(buscarEjemplaresPorLibroYUbicacion).toHaveBeenCalledWith("978-9589012338", "bodega");
+    expect(buscarEjemplaresPorLibroYUbicacion).toHaveBeenCalledWith("1004", "bodega");
   });
 
   it("segundo criterio sin resultados", async () => {
@@ -62,11 +62,11 @@ describe("ConsultarEjemplar", () => {
     const { user } = renderizar(<ConsultarEjemplar />);
 
     await user.click(screen.getByRole("radio", { name: "Por libro y ubicación" }));
-    await user.type(screen.getByLabelText("ISBN del libro"), "978-9589012338");
+    await user.type(screen.getByLabelText("ISBN del libro"), "1004");
     await user.type(screen.getByLabelText("Ubicación"), "Estante Z9");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
 
-    expect(await screen.findByText("No hay ejemplares del libro «978-9589012338» en «Estante Z9».")).toBeInTheDocument();
+    expect(await screen.findByText("No hay ejemplares del libro «1004» en «Estante Z9».")).toBeInTheDocument();
   });
 
   it("informa cuando no existe o cuando falla la conexión", async () => {

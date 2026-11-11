@@ -14,12 +14,12 @@ import java.util.List;
  * ObjectId que apunta a libros._id (sin referencias huerfanas).
  *
  * Uso (desde la raiz del repositorio, con el driver que descarga Maven):
- *   scripts\verificar-mongo.cmd [base]          (por defecto la base "libreria")
+ *   scripts\verificar-mongo.cmd [base]          (por defecto la base "libreria_evaluacion")
  */
 public class VerificarMongo {
 
     public static void main(String[] args) {
-        String base = args.length > 0 ? args[0] : "libreria";
+        String base = args.length > 0 ? args[0] : "libreria_evaluacion";
         try (MongoClient cliente = MongoClients.create("mongodb://localhost:27017")) {
             MongoDatabase db = cliente.getDatabase(base);
             System.out.println("Base: " + base);
@@ -57,8 +57,8 @@ public class VerificarMongo {
             System.out.printf("%nEjemplares con libroId que no es ObjectId: %d%n", noObjectId);
             System.out.printf("Ejemplares sin libro (referencias huerfanas): %d%n",
                     huerfanos.isEmpty() ? 0 : huerfanos.get(0).getInteger("cantidad"));
-            boolean bien = noObjectId == 0 && huerfanos.isEmpty() && ejemplar != null && ejemplar.get("libroId") instanceof ObjectId;
-            System.out.println(bien ? "OK: ejemplares.libroId es ObjectId y apunta a libros._id" : "REVISAR: hay problemas");
+            boolean bien = noObjectId == 0 && huerfanos.isEmpty() && (ejemplar == null || ejemplar.get("libroId") instanceof ObjectId);
+            System.out.println(bien ? "OK: colecciones e indices listos; las referencias existentes son ObjectId y apuntan a libros._id" : "REVISAR: hay problemas");
             System.exit(bien ? 0 : 1);
         }
     }

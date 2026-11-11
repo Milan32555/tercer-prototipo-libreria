@@ -12,7 +12,7 @@ framework **Spring Data MongoDB**, en **dos colecciones** (`libros` y `ejemplare
 | Servidor GraphQL | Java 17 · Spring Boot 4.1.2 · Spring for GraphQL · Spring Data MongoDB · Lombok · Bean Validation | [`servidor-libreria-mongo/`](servidor-libreria-mongo) |
 | Cliente web | TypeScript · React 18 · Vite | [`cliente-web-react/`](cliente-web-react) |
 | App móvil | Dart · Flutter (Android) | [`cliente-movil-flutter/`](cliente-movil-flutter) |
-| Base de datos | MongoDB 8 (no relacional) | `localhost:27017`, base `libreria` |
+| Base de datos | MongoDB 8 (no relacional) | `localhost:27017`, base `libreria_evaluacion` |
 
 ---
 
@@ -61,7 +61,7 @@ erDiagram
     LIBROS ||--o{ EJEMPLARES : "libros._id = ejemplares.libroId"
     LIBROS {
         ObjectId _id PK "llave primaria"
-        string isbn UK "obligatorio, único, ISBN-10/13"
+        string isbn UK "obligatorio, único, 1 a 4 dígitos"
         string titulo "obligatorio"
         string autor "obligatorio, índice"
         double precio "obligatorio, > 0, índice"
@@ -241,7 +241,7 @@ La consola GraphiQL queda en <http://localhost:8081/graphiql>.
 - No se elimina un libro que tiene ejemplares.
 - Un ejemplar solo se crea para un libro existente y no cambia de libro.
 - `numeroPrestamos` suma 1 cuando el ejemplar **pasa** a PRESTADO; en Actualizar el valor que envía el cliente se ignora.
-- Validaciones con Bean Validation (`@Valid`) y mensajes en español: obligatorios, positivos (`@Positive`, `@PositiveOrZero`), fechas no futuras (`@PastOrPresent`), formato ISBN (`@IsbnValido`) y código EJ-000 (`@Pattern`), largos máximos de los opcionales.
+- Validaciones con Bean Validation (`@Valid`) y mensajes en español: obligatorios, positivos (`@Positive`, `@PositiveOrZero`), fechas no futuras (`@PastOrPresent`), ISBN de 1 a 4 dígitos (`@IsbnValido`) y código EJ-000 (`@Pattern`), largos máximos de los opcionales.
 
 ## Concurrencia y cantidad de datos
 
@@ -259,8 +259,10 @@ La consola GraphiQL queda en <http://localhost:8081/graphiql>.
   (`orTimeout`) y `exceptionally` + `logger.error` si una falla (las otras dos igual se entregan).
 - **Paginación en todos los Listar** (skip/limit en MongoDB) y filtros siempre en MongoDB. El
   `$lookup` se hace después de paginar: solo une los ejemplares de la página pedida.
-- **Datos**: 12 libros y 20 ejemplares de prueba si la base está vacía; perfil `carga` con
-  1.000 libros y 5.000 ejemplares.
+- **Datos de entrega**: base `libreria_evaluacion` inicialmente vacía. El profesor crea los libros y
+  ejemplares desde los clientes y se conservan entre reinicios. Los datos anteriores siguen en
+  `libreria`. La carga de ejemplos requiere `libreria.datos-iniciales.habilitado=true`; el perfil
+  `carga` usa su propia base `libreria_carga` con 1.000 libros y 5.000 ejemplares.
 
 ## Logging
 
@@ -272,7 +274,7 @@ línea por operación con el cliente que la hizo (encabezado `X-Cliente`). Ejemp
 
 ```
 15:00:32.883 INFO  [tarea-2] c.l.s.t.ServicioResumenInventario - Tarea contar-ejemplares-por-estado iniciada en el hilo tarea-2
-15:00:44.935 WARN  [http-nio-8081-exec-5] c.l.servidor.servicio.ServicioLibro - Crear libro rechazado: Ya existe un libro con el ISBN 978-0307474728.
+15:00:44.935 WARN  [http-nio-8081-exec-5] c.l.servidor.servicio.ServicioLibro - Crear libro rechazado: Ya existe un libro con el ISBN 1001.
 15:06:23.820 ERROR [tarea-2] c.l.s.t.ServicioResumenInventario - Tarea contar-libros falló: DataAccessResourceFailureException: MongoDB no responde
 15:00:44  App móvil    | consulta ejemplaresConLibro
 ```
@@ -290,7 +292,7 @@ abre la app (`adb reverse tcp:8081 tcp:8081`).
 **Por partes:**
 
 ```bash
-# 1. Servidor (carga los datos de prueba si la base está vacía)
+# 1. Servidor (base de evaluacion vacia, sin registros de ejemplo)
 cd servidor-libreria-mongo
 ./mvnw spring-boot:run                                   # http://localhost:8081/graphql
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=carga  # base libreria_carga con 1.000 + 5.000
@@ -309,7 +311,7 @@ La URL y la base de MongoDB se cambian con `LIBRERIA_MONGO_URI` y `LIBRERIA_MONG
 que descarga Maven) o, con `mongosh`:
 
 ```js
-use libreria
+use libreria_evaluacion
 show collections                                  // libros, ejemplares, revisiones
 db.ejemplares.getIndexes()
 db.ejemplares.findOne({ codigo: "EJ-001" })       // libroId: ObjectId("…")

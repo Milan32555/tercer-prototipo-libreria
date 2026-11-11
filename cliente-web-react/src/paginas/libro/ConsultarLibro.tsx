@@ -51,7 +51,7 @@ export default function ConsultarLibro() {
       <div className="pila">
         <BuscadorClave
           etiqueta={criterio === "isbn" ? "ISBN" : "Título"}
-          placeholder={criterio === "isbn" ? "978-0307474728" : "Cien años de soledad"}
+          placeholder={criterio === "isbn" ? "1001" : "Cien años de soledad"}
           cargando={cargando}
           alBuscar={buscar}
           antes={<Segmentado etiqueta="Buscar por" nombre="criterio" valor={criterio} opciones={CRITERIOS} alCambiar={setCriterio} />}

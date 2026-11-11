@@ -52,7 +52,7 @@ class _CampoLibroPorIsbnState extends State<CampoLibroPorIsbn> {
     setState(() {
       _libro = null;
       _noExiste = false;
-      _buscando = isbn.replaceAll('-', '').length >= 10;
+      _buscando = RegExp(r'^\d{1,4}$').hasMatch(isbn);
     });
     if (!_buscando) return;
     final consulta = ++_consulta;
@@ -78,7 +78,7 @@ class _CampoLibroPorIsbnState extends State<CampoLibroPorIsbn> {
       children: [
         TextFormField(
           controller: widget.controller,
-          decoration: const InputDecoration(labelText: 'ISBN del libro', hintText: '978-0307474728'),
+          decoration: const InputDecoration(labelText: 'ISBN del libro', hintText: '1001'),
           autocorrect: false,
           enableSuggestions: false,
           textInputAction: TextInputAction.next,

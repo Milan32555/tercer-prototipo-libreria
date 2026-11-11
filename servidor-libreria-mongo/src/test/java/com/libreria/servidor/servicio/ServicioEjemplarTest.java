@@ -76,7 +76,7 @@ class ServicioEjemplarTest extends PruebaBase {
                 .isInstanceOf(ConstraintViolationException.class)
                 .satisfies(e -> assertThat(ManejadorErrores.mensajeValidacion((ConstraintViolationException) e))
                         .contains("El código debe tener el formato EJ-000")
-                        .contains("El ISBN debe tener 10 o 13 dígitos")
+                        .contains("El ISBN debe tener de 1 a 4 dígitos")
                         .contains("El estado del ejemplar es obligatorio.")
                         .contains("La ubicación es obligatoria.")
                         .contains("La fecha de ingreso no puede ser futura.")
@@ -87,9 +87,9 @@ class ServicioEjemplarTest extends PruebaBase {
 
     @Test
     void soloParaUnLibroExistente() {
-        assertThatThrownBy(() -> servicio.crear(ejemplar("EJ-001", "978-0000000000", EstadoEjemplar.DISPONIBLE, "A")))
+        assertThatThrownBy(() -> servicio.crear(ejemplar("EJ-001", "9999", EstadoEjemplar.DISPONIBLE, "A")))
                 .isInstanceOf(LibreriaException.class)
-                .hasMessage("No existe un libro con el ISBN 978-0000000000; el ejemplar debe pertenecer a un libro registrado.");
+                .hasMessage("No existe un libro con el ISBN 9999; el ejemplar debe pertenecer a un libro registrado.");
     }
 
     @Test
@@ -128,7 +128,7 @@ class ServicioEjemplarTest extends PruebaBase {
 
         assertThatThrownBy(() -> servicio.actualizar(ejemplar("EJ-001", ISBN_MARIA, EstadoEjemplar.DISPONIBLE, "A")))
                 .isInstanceOf(LibreriaException.class)
-                .hasMessage("El ejemplar EJ-001 pertenece al libro 978-0307474728; no se puede cambiar de libro.");
+                .hasMessage("El ejemplar EJ-001 pertenece al libro 1001; no se puede cambiar de libro.");
     }
 
     @Test
@@ -168,7 +168,7 @@ class ServicioEjemplarTest extends PruebaBase {
                 .extracting(Ejemplar::getCodigo).containsExactly("EJ-001", "EJ-002");
         assertThat(servicio.buscarPorLibroYUbicacion(ISBN_CIEN, "BODEGA")).hasSize(1);
         assertThat(servicio.buscarPorLibroYUbicacion(ISBN_MARIA, "Estante A1")).isEmpty();
-        assertThat(servicio.buscarPorLibroYUbicacion("978-0000000000", "Estante A1")).isEmpty();
+        assertThat(servicio.buscarPorLibroYUbicacion("9999", "Estante A1")).isEmpty();
         assertThat(servicio.buscarPorLibroYUbicacion(ISBN_CIEN, " ")).isEmpty();
     }
 
@@ -201,7 +201,7 @@ class ServicioEjemplarTest extends PruebaBase {
                 .extracting(EjemplarConLibro::getCodigo).containsExactly("EJ-002", "EJ-003");
         assertThat(servicio.listarConLibro(EstadoEjemplar.PRESTADO, ISBN_MARIA, 0, 10).contenido())
                 .extracting(EjemplarConLibro::getTituloLibro).containsExactly("María");
-        assertThat(servicio.listarConLibro(null, "978-0000000000", 0, 10).totalElementos()).isZero();
+        assertThat(servicio.listarConLibro(null, "9999", 0, 10).totalElementos()).isZero();
 
         Pagina<EjemplarConLibro> segunda = servicio.listarConLibro(null, null, 1, 2);
         assertThat(segunda.totalPaginas()).isEqualTo(2);

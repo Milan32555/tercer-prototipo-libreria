@@ -25,14 +25,15 @@ import java.util.concurrent.TimeUnit;
 /**
  * Genera muchos datos para las pruebas de carga (1.000 libros y 5.000 ejemplares por defecto).
  * Inserta por lotes con insertMany, directamente en las colecciones. Los libros generados tienen
- * ISBN 979-1xxxxxxxxx y los ejemplares códigos EJ-1xxxxx, así se distinguen de los reales.
+ * ISBN de 4 dígitos entre 3000 y 8999 y los ejemplares códigos EJ-1xxxxx (máximo 6.000 libros).
  * Solo se puede usar en desarrollo (perfil "carga").
  */
 @Service
 public class GeneradorDatosCarga {
 
     private static final Logger log = LoggerFactory.getLogger(GeneradorDatosCarga.class);
-    private static final String PREFIJO_ISBN = "979-1";
+    private static final int BASE_ISBN = 3_000;
+    private static final int MAXIMO_LIBROS = 6_000;
     private static final int BASE_CODIGO = 100_000;
     private static final int LOTE = 1_000;
 
@@ -45,14 +46,18 @@ public class GeneradorDatosCarga {
     }
 
     public ResultadoCarga generar(int cantidadLibros, int cantidadEjemplares) {
-        if (cantidadLibros < 1 || cantidadLibros > 50_000 || cantidadEjemplares < 0 || cantidadEjemplares > 200_000) {
+        if (cantidadLibros < 1 || cantidadLibros > MAXIMO_LIBROS || cantidadEjemplares < 0 || cantidadEjemplares > 200_000) {
             throw new LibreriaException(Tipo.VALIDACION,
-                    "Se pueden generar entre 1 y 50.000 libros y entre 0 y 200.000 ejemplares.");
+                    "Se pueden generar entre 1 y 6.000 libros y entre 0 y 200.000 ejemplares.");
         }
         long inicio = System.nanoTime();
         log.info("Generando datos de carga: {} libros y {} ejemplares", cantidadLibros, cantidadEjemplares);
         try {
-            long librosPrevios = mongo.count(Query.query(Criteria.where("isbn").regex("^" + PREFIJO_ISBN)), Libro.class);
+            long librosPrevios = mongo.count(Query.query(Criteria.where("isbn").regex("^[3-8]\\d{3}$")), Libro.class);
+            if (librosPrevios + cantidadLibros > MAXIMO_LIBROS) {
+                throw new LibreriaException(Tipo.VALIDACION, "Con ISBN de 4 dígitos solo caben " + MAXIMO_LIBROS
+                        + " libros de carga (3000 a 8999).");
+            }
             long ejemplaresPrevios = mongo.count(Query.query(Criteria.where("codigo").regex("^EJ-1\\d{5}$")),
                     Ejemplar.class);
             if (BASE_CODIGO + ejemplaresPrevios + cantidadEjemplares > 999_999) {
@@ -67,7 +72,7 @@ public class GeneradorDatosCarga {
                 librosIds.add(id);
                 Libro libro = Libro.builder()
                         .id(id.toHexString())
-                        .isbn(PREFIJO_ISBN + String.format("%09d", n))
+                        .isbn(String.valueOf(BASE_ISBN + n))
                         .titulo("Libro de carga " + (n + 1))
                         .autor("Autor de carga " + (n % 50 + 1))
                         .precio(20_000 + (n * 137) % 180_000)

@@ -12,7 +12,7 @@ vi.mock("../../graphql/servicioLibro", () => ({
 }));
 
 const VORAGINE: Libro = {
-  isbn: "978-8437609355", titulo: "La vorágine", autor: "José Eustasio Rivera",
+  isbn: "1002", titulo: "La vorágine", autor: "José Eustasio Rivera",
   precio: 48000, numeroPaginas: 390, fechaPublicacion: "1924-11-25T00:00:00", genero: "FICCION"
 };
 
@@ -21,11 +21,11 @@ describe("ConsultarLibro", () => {
     vi.mocked(buscarLibroPorIsbn).mockResolvedValue(VORAGINE);
     const { user } = renderizar(<ConsultarLibro />);
 
-    await user.type(screen.getByLabelText("ISBN"), "978-8437609355");
+    await user.type(screen.getByLabelText("ISBN"), "1002");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
 
     expect(await screen.findByRole("heading", { name: "La vorágine" })).toBeInTheDocument();
-    expect(buscarLibroPorIsbn).toHaveBeenCalledWith("978-8437609355");
+    expect(buscarLibroPorIsbn).toHaveBeenCalledWith("1002");
     expect(buscarLibroPorTitulo).not.toHaveBeenCalled();
   });
 
